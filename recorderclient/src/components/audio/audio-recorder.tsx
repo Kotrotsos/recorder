@@ -88,22 +88,29 @@ export default function AudioRecorder() {
     }
   }, [audioURL, uploadedAudioURL])
   
-  // Handle audio ended event
+  // Handle audio element events
   useEffect(() => {
-    const handleAudioEnded = () => {
-      setIsPlaying(false)
-      setIsUploadedPlaying(false)
-    }
+    const audioElement = audioRef.current
     
-    const currentAudioRef = audioRef.current;
-    
-    if (currentAudioRef) {
-      currentAudioRef.addEventListener("ended", handleAudioEnded)
-    }
-    
-    return () => {
-      if (currentAudioRef) {
-        currentAudioRef.removeEventListener("ended", handleAudioEnded)
+    if (audioElement) {
+      const handleEnded = () => {
+        console.log("Audio playback ended")
+        setIsPlaying(false)
+        setIsUploadedPlaying(false)
+      }
+      
+      const handleError = (e: Event) => {
+        console.error("Audio element error:", e)
+        setIsPlaying(false)
+        setIsUploadedPlaying(false)
+      }
+      
+      audioElement.addEventListener('ended', handleEnded)
+      audioElement.addEventListener('error', handleError)
+      
+      return () => {
+        audioElement.removeEventListener('ended', handleEnded)
+        audioElement.removeEventListener('error', handleError)
       }
     }
   }, [])
@@ -138,11 +145,11 @@ export default function AudioRecorder() {
       // Determine the supported MIME type
       const mimeType = getSupportedMimeType();
       console.log("Using MIME type:", mimeType);
-      setCurrentMimeType(mimeType);
+      setCurrentMimeType(mimeType || 'audio/mp4');
       
       // Create media recorder with the supported MIME type
       try {
-        const options = mimeType ? { mimeType } : undefined;
+        const options = mimeType ? { mimeType } : { mimeType: 'audio/mp4' };
         mediaRecorderRef.current = new MediaRecorder(stream, options);
         console.log("MediaRecorder created successfully");
       } catch (error) {
@@ -157,7 +164,7 @@ export default function AudioRecorder() {
             setCurrentMimeType(mediaRecorderRef.current.mimeType);
             console.log("Using browser-selected MIME type:", mediaRecorderRef.current.mimeType);
           } else {
-            setCurrentMimeType('audio/webm'); // Default fallback
+            setCurrentMimeType('audio/mp4'); // Default fallback
           }
         } catch (fallbackError) {
           console.error("Failed to create MediaRecorder even without MIME type:", fallbackError);
@@ -186,10 +193,9 @@ export default function AudioRecorder() {
         }
         
         try {
-          // Create blob and URL with the same MIME type
-          const blobOptions = currentMimeType ? { type: currentMimeType } : {};
-          console.log("Creating audio blob with MIME type:", currentMimeType || "browser default");
-          const audioBlob = new Blob(audioChunksRef.current, blobOptions);
+          // Always use audio/mp4 for consistency
+          console.log("Creating audio blob with MIME type: audio/mp4");
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp4' });
           const url = URL.createObjectURL(audioBlob);
           setAudioURL(url);
           console.log("Audio blob created successfully");
@@ -404,37 +410,33 @@ export default function AudioRecorder() {
   // Handle file upload
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
-    if (!files || files.length === 0) return
-    
-    const file = files[0]
-    setUploadedFile(file)
-    
-    // Revoke previous URL if exists
-    if (uploadedAudioURL) {
-      URL.revokeObjectURL(uploadedAudioURL)
-    }
-    
-    // Create a new blob with the supported MIME type if needed
-    const supportedMimeType = getSupportedMimeType();
-    
-    // If the file is already in a supported format, use it directly
-    if (file.type.startsWith('audio/') && MediaRecorder.isTypeSupported(file.type)) {
+    if (files && files.length > 0) {
+      const file = files[0]
+      
+      // Check if the file is an audio file
+      if (!file.type.startsWith('audio/')) {
+        alert('Please upload an audio file')
+        return
+      }
+      
+      console.log("Uploaded file type:", file.type)
+      setUploadedFile(file)
+      
+      // Create a URL for the uploaded file
       const url = URL.createObjectURL(file)
+      
+      // If we previously had an uploaded file, revoke its URL
+      if (uploadedAudioURL) {
+        URL.revokeObjectURL(uploadedAudioURL)
+      }
+      
       setUploadedAudioURL(url)
-      setCurrentMimeType(file.type);
-    } else {
-      // Otherwise, create a new blob with a supported type
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          const mimeType = supportedMimeType || 'audio/mp4';
-          const blob = new Blob([e.target.result], { type: mimeType });
-          const url = URL.createObjectURL(blob);
-          setUploadedAudioURL(url);
-          setCurrentMimeType(mimeType);
-        }
-      };
-      reader.readAsArrayBuffer(file);
+      setCurrentMimeType('audio/mp4') // Treat all uploads as MP4 for consistency
+      
+      // Reset any previous recording state
+      if (isPostRecording) {
+        resetRecorder()
+      }
     }
   }
   
@@ -444,8 +446,20 @@ export default function AudioRecorder() {
       if (isPlaying) {
         audioRef.current.pause()
       } else {
+        // Make sure we reset the audio element before setting a new source
+        audioRef.current.pause()
+        audioRef.current.currentTime = 0
         audioRef.current.src = audioURL
-        audioRef.current.play()
+        
+        // Add error handling for playback
+        const playPromise = audioRef.current.play()
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.error("Error playing recorded audio:", error)
+            alert("Error playing audio. Please try recording again.")
+            setIsPlaying(false)
+          })
+        }
       }
       setIsPlaying(!isPlaying)
     }
@@ -457,8 +471,20 @@ export default function AudioRecorder() {
       if (isUploadedPlaying) {
         audioRef.current.pause()
       } else {
+        // Make sure we reset the audio element before setting a new source
+        audioRef.current.pause()
+        audioRef.current.currentTime = 0
         audioRef.current.src = uploadedAudioURL
-        audioRef.current.play()
+        
+        // Add error handling for playback
+        const playPromise = audioRef.current.play()
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.error("Error playing uploaded audio:", error)
+            alert("Error playing audio. The file format may not be supported.")
+            setIsUploadedPlaying(false)
+          })
+        }
       }
       setIsUploadedPlaying(!isUploadedPlaying)
     }
@@ -487,39 +513,29 @@ export default function AudioRecorder() {
 
   // Helper function to determine the supported MIME type
   const getSupportedMimeType = () => {
-    // Safari-friendly formats first
-    const types = [
-      'audio/mp4',
-      'audio/aac',
-      'audio/wav',
-      'audio/mpeg',
-      'audio/mp3',
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/ogg;codecs=opus',
-      'audio/ogg'
-    ];
-    
-    for (const type of types) {
-      if (MediaRecorder.isTypeSupported(type)) {
-        console.log(`Browser supports recording in ${type} format`);
-        return type;
-      }
+    // Only support MP4 format as requested
+    if (MediaRecorder.isTypeSupported('audio/mp4')) {
+      console.log('Browser supports recording in audio/mp4 format');
+      return 'audio/mp4';
     }
     
-    console.warn('No supported MIME types found for MediaRecorder. Using default browser implementation.');
+    console.warn('MP4 format not supported. Using default browser implementation.');
     // Fallback to default (browser will choose)
     return '';
   };
 
   // Helper function to get file extension from MIME type
   const getFileExtensionFromMimeType = (mimeType: string): string => {
-    if (mimeType.includes('mp4')) return 'mp4';
+    // Default to mp4 as requested
+    if (!mimeType || mimeType.includes('mp4')) return 'mp4';
     if (mimeType.includes('webm')) return 'webm';
     if (mimeType.includes('ogg')) return 'ogg';
     if (mimeType.includes('wav')) return 'wav';
+    if (mimeType.includes('mp3') || mimeType.includes('mpeg')) return 'mp3';
     if (mimeType.includes('aac')) return 'aac';
-    return 'audio'; // Default fallback
+    
+    // Default fallback
+    return 'mp4';
   };
 
   return (
@@ -740,7 +756,6 @@ export default function AudioRecorder() {
       {/* Only show footer with save button after recording */}
       {isPostRecording && audioURL && (
         <CardFooter className="px-5 py-3 border-t border-white/20 bg-white/5 text-xs text-white/60">
-          <audio ref={audioRef} className="hidden" />
           <div className="w-full flex justify-between items-center">
             <span>Audio Recorder</span>
             <a
@@ -763,8 +778,14 @@ export default function AudioRecorder() {
           </div>
         </CardFooter>
       )}
-      {/* Always have the audio element available but hidden */}
-      {!isPostRecording && <audio ref={audioRef} className="hidden" />}
+      {/* Audio element for playback */}
+      <audio 
+        ref={audioRef} 
+        className="hidden" 
+        controls={false}
+        preload="auto"
+        onError={(e) => console.error("Audio error:", e)}
+      />
     </Card>
   )
 }
