@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function RegisterPage() {
   return (
-    <AuthLayout title="Create an Account" description="Join us and start recording today">
+    <AuthLayout title="" description="">
       <RegisterForm />
     </AuthLayout>
   )

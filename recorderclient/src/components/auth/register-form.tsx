@@ -8,11 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export default function RegisterForm() {
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -24,6 +27,13 @@ export default function RegisterForm() {
     setLoading(true)
     setError(null)
     setMessage(null)
+
+    // Validate terms acceptance
+    if (!termsAccepted) {
+      setError('You must accept the Terms of Service to register')
+      setLoading(false)
+      return
+    }
 
     // Validate passwords match
     if (password !== confirmPassword) {
@@ -45,6 +55,9 @@ export default function RegisterForm() {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            name: name,
+          },
         },
       })
 
@@ -72,6 +85,18 @@ export default function RegisterForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleRegister} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-white">Full Name</Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="John Doe"
+              value={name}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+              required
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/30 focus:ring-white/30"
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="email" className="text-white">Email</Label>
             <Input
@@ -107,6 +132,25 @@ export default function RegisterForm() {
               required
               className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/30 focus:ring-white/30"
             />
+          </div>
+          <div className="flex items-start space-x-2 pt-2">
+            <Checkbox 
+              id="terms" 
+              checked={termsAccepted}
+              onCheckedChange={(checked: boolean | 'indeterminate') => setTermsAccepted(checked === true)}
+              className="bg-white/10 border-white/20 data-[state=checked]:bg-white/30 data-[state=checked]:text-white"
+            />
+            <div className="grid gap-1.5 leading-none">
+              <label
+                htmlFor="terms"
+                className="text-sm font-medium leading-none text-white peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                I accept the{' '}
+                <Link href="/terms-of-service" className="text-white underline hover:text-white/80" target="_blank">
+                  Terms of Service
+                </Link>
+              </label>
+            </div>
           </div>
           {error && (
             <div className="text-sm font-medium text-red-300">{error}</div>
