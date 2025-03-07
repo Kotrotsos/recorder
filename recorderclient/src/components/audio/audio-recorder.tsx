@@ -315,32 +315,26 @@ export default function AudioRecorder() {
     }
   }
   
-  // Start new recording
-  const startNewRecording = () => {
+  // Reset recorder to initial state
+  const resetRecorder = () => {
     // Clear previous recording
     if (audioURL) {
       URL.revokeObjectURL(audioURL)
       setAudioURL(null)
     }
     
+    // Reset to initial state
     setIsPostRecording(false)
+    setIsRecording(false)
     setRecordingTime(0)
     setAiResult(null)
+    setIsPlaying(false)
     
-    // Start new recording
-    startRecording()
-  }
-  
-  // Clear recording
-  const clearRecording = () => {
-    if (audioURL) {
-      URL.revokeObjectURL(audioURL)
-      setAudioURL(null)
+    // Stop audio playback if it's playing
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
-    
-    setIsPostRecording(false)
-    setRecordingTime(0)
-    setAiResult(null)
   }
   
   // Handle file upload
@@ -453,7 +447,7 @@ export default function AudioRecorder() {
                       variant="outline"
                       size="icon"
                       className="rounded-full w-12 h-12 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                      onClick={clearRecording}
+                      onClick={resetRecorder}
                     >
                       <Trash2 className="h-5 w-5" />
                     </Button>
@@ -469,7 +463,7 @@ export default function AudioRecorder() {
                       variant="outline"
                       size="icon"
                       className="rounded-full w-12 h-12 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                      onClick={startNewRecording}
+                      onClick={resetRecorder}
                     >
                       <PlusCircle className="h-5 w-5" />
                     </Button>
