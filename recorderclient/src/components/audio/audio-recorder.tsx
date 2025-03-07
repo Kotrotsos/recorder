@@ -9,7 +9,11 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-export default function AudioRecorder() {
+interface AudioRecorderProps {
+  isAuthenticated: boolean;
+}
+
+export default function AudioRecorder({ isAuthenticated = false }: AudioRecorderProps) {
   // Basic state
   const [isRecording, setIsRecording] = useState(false)
   const [audioURL, setAudioURL] = useState<string | null>(null)
@@ -23,6 +27,9 @@ export default function AudioRecorder() {
   const [aiProcessing, setAiProcessing] = useState(false)
   const [aiResult, setAiResult] = useState<string | null>(null)
   const [currentMimeType, setCurrentMimeType] = useState<string>("")
+  
+  // Recording time limit in seconds based on auth status
+  const recordingTimeLimit = isAuthenticated ? 600 : 300; // 10 mins if logged in, 5 mins if not
   
   // Add a state for the transcript
   const [transcriptContent] = useState<string>(
@@ -39,6 +46,23 @@ export default function AudioRecorder() {
   // Visualization state for the recording button
   const [audioLevel, setAudioLevel] = useState<number>(0)
   const visualizationIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Effect to check if recording time has reached the limit
+  useEffect(() => {
+    if (isRecording && recordingTime >= recordingTimeLimit) {
+      stopRecording();
+    }
+  }, [isRecording, recordingTime, recordingTimeLimit]);
+  
+  // Calculate time remaining in seconds
+  const timeRemainingSeconds = recordingTimeLimit - recordingTime;
+  
+  // Format time remaining for display
+  const formatTimeRemaining = () => {
+    const mins = Math.floor(timeRemainingSeconds / 60);
+    const secs = timeRemainingSeconds % 60;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
   
   // Clean up resources when component unmounts
   useEffect(() => {
@@ -560,8 +584,19 @@ export default function AudioRecorder() {
           <TabsContent value="record" className="space-y-5">
             {/* Recording controls */}
             <div className="space-y-4">
-              {/* Timer display - only show when recording or after recording */}
-              {(isRecording || isPostRecording) && (
+              {/* Timer display - show time remaining when recording, or elapsed time after recording */}
+              {isRecording ? (
+                <div className="text-center">
+                  <div className="text-3xl font-mono font-bold text-white">
+                    {formatTimeRemaining()}
+                  </div>
+                  <div className="text-xs text-white/70 mt-1">
+                    {isAuthenticated 
+                      ? "Premium: 10 minute recording limit" 
+                      : "Free: 5 minute recording limit"}
+                  </div>
+                </div>
+              ) : isPostRecording && (
                 <div className="text-center">
                   <span className="text-3xl font-mono font-bold text-white">
                     {formatTime(recordingTime)}
