@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Record",
+  title: "Recordi",
   description: "Record Transcripts, Summarize, and Share"
 };
 
