@@ -2,14 +2,48 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { User } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase';
 
 // Use dynamic import with SSR disabled for the AudioRecorder component
 const AudioRecorder = dynamic(() => import('@/components/audio/audio-wrapper'), {
   ssr: false,
 });
 
-export default function PageContent() {
+interface PageContentProps {
+  user: User | null;
+}
+
+export default function PageContent({ user: serverUser }: PageContentProps) {
+  // Create a state to ensure the component re-renders when user data is available
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  
+  // Check authentication state using client-side Supabase
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // First try to use the server-provided user
+        if (serverUser) {
+          console.log('Using server-provided user:', serverUser);
+          setIsAuthenticated(true);
+          return;
+        }
+        
+        // If no server user, check client-side
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log('Client-side user check:', user);
+        setIsAuthenticated(!!user);
+      } catch (error) {
+        console.error('Error checking auth:', error);
+        setIsAuthenticated(false);
+      }
+    };
+    
+    checkAuth();
+  }, [serverUser]);
+
   // Add a style tag for the animation
   useEffect(() => {
     // Create a style element
@@ -104,12 +138,21 @@ export default function PageContent() {
             <li><Link href="#" className="hover:text-white transition-colors">About</Link></li>
             <li><Link href="#" className="hover:text-white transition-colors">Pricing</Link></li>
             <li>
-              <Link 
-                href="#" 
-                className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
-              >
-                Login
-              </Link>
+              {isAuthenticated ? (
+                <Link 
+                  href="/account" 
+                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                >
+                  My Account
+                </Link>
+              ) : (
+                <Link 
+                  href="/login" 
+                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                >
+                  Login
+                </Link>
+              )}
             </li>
           </ul>
         </nav>
