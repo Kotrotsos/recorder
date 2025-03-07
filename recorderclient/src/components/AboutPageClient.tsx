@@ -122,7 +122,7 @@ export default function AboutPageClient() {
             </p>
             
             <p>
-              Our mission is to make audio processing accessible, accurate, and insightful. Whether you're a student recording lectures, 
+              Our mission is to make audio processing accessible, accurate, and insightful. Whether you&apos;re a student recording lectures, 
               a professional documenting meetings, or a content creator capturing ideas, rec.ai provides the tools you need to turn 
               spoken words into actionable text and insights.
             </p>

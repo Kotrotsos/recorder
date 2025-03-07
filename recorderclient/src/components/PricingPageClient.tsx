@@ -128,7 +128,7 @@ export default function PricingPageClient() {
             Simple, Transparent Pricing
           </h1>
           <p className="text-xl text-white/80 max-w-2xl mx-auto">
-            We're just getting started! For a limited time, enjoy all our features completely free.
+            We&apos;re just getting started! For a limited time, enjoy all our features completely free.
           </p>
         </div>
         
@@ -197,7 +197,7 @@ export default function PricingPageClient() {
             <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
               <h3 className="text-lg font-medium text-white mb-2">How long will the free plan be available?</h3>
               <p className="text-white/80">
-                The free plan will be available during our early access period. We'll provide advance notice before transitioning to paid plans.
+                The free plan will be available during our early access period. We&apos;ll provide advance notice before transitioning to paid plans.
               </p>
             </div>
             
@@ -211,7 +211,7 @@ export default function PricingPageClient() {
             <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
               <h3 className="text-lg font-medium text-white mb-2">What payment methods will you accept when paid plans launch?</h3>
               <p className="text-white/80">
-                We'll accept all major credit cards and potentially other payment methods. We'll announce full details when paid plans launch.
+                We&apos;ll accept all major credit cards and potentially other payment methods. We&apos;ll announce full details when paid plans launch.
               </p>
             </div>
           </div>

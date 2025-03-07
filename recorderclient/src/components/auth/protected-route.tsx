@@ -25,7 +25,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
 
     checkAuth()
-  }, [router])
+  }, [router, supabase.auth])
 
   if (isLoading) {
     return (

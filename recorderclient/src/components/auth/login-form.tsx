@@ -91,7 +91,7 @@ export default function LoginForm() {
       </CardContent>
       <CardFooter className="flex flex-col space-y-2 border-t border-white/10 pt-4">
         <div className="text-sm text-center text-white/70">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <Link href="/register" className="text-white hover:text-white/80 underline underline-offset-4">
             Register
           </Link>

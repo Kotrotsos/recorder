@@ -17,8 +17,8 @@ export default function TermsOfServicePage() {
             
             <h2 className="text-2xl font-semibold mt-8 mb-4 text-white">1. Introduction</h2>
             <p className="text-white/80 text-lg leading-relaxed">
-              Welcome to rec.ai ("we," "our," or "us"). By accessing or using our audio recording and transcription services, 
-              you agree to be bound by these Terms of Service ("Terms"). Please read these Terms carefully.
+              Welcome to rec.ai (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;). By accessing or using our audio recording and transcription services, 
+              you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). Please read these Terms carefully.
             </p>
             
             <h2 className="text-2xl font-semibold mt-8 mb-4 text-white">2. Account Registration</h2>
@@ -48,7 +48,7 @@ export default function TermsOfServicePage() {
               <li className="mb-2">Violate any applicable laws or regulations</li>
               <li className="mb-2">Infringe upon the rights of others</li>
               <li className="mb-2">Upload or share content that is illegal, harmful, threatening, abusive, or otherwise objectionable</li>
-              <li className="mb-2">Attempt to gain unauthorized access to our systems or other users' accounts</li>
+              <li className="mb-2">Attempt to gain unauthorized access to our systems or other users&rsquo; accounts</li>
               <li className="mb-2">Interfere with or disrupt the integrity or performance of our services</li>
             </ul>
             

@@ -35,7 +35,7 @@ export default function UserProfile() {
     }
 
     getUser()
-  }, [])
+  }, [supabase.auth])
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()
