@@ -1,49 +1,9 @@
 "use client";
 
-import dynamic from 'next/dynamic';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase';
 
-// Use dynamic import with SSR disabled for the AudioRecorder component
-const AudioRecorder = dynamic(() => import('@/components/audio/audio-wrapper'), {
-  ssr: false,
-});
-
-interface PageContentProps {
-  user: User | null;
-}
-
-export default function PageContent({ user: serverUser }: PageContentProps) {
-  // Create a state to ensure the component re-renders when user data is available
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  
-  // Check authentication state using client-side Supabase
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // First try to use the server-provided user
-        if (serverUser) {
-          console.log('Using server-provided user:', serverUser);
-          setIsAuthenticated(true);
-          return;
-        }
-        
-        // If no server user, check client-side
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        console.log('Client-side user check:', user);
-        setIsAuthenticated(!!user);
-      } catch (error) {
-        console.error('Error checking auth:', error);
-        setIsAuthenticated(false);
-      }
-    };
-    
-    checkAuth();
-  }, [serverUser]);
-
+export default function AboutPageClient() {
   // Add a style tag for the animation
   useEffect(() => {
     // Create a style element
@@ -131,48 +91,71 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
       {/* Navigation bar */}
       <header className="relative z-10 px-6 py-4 flex justify-between items-center">
         <div className="text-white font-bold text-2xl">
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-pink-200">rec.ai</span>
+          <Link href="/" className="bg-clip-text text-transparent bg-gradient-to-r from-white to-pink-200">
+            rec.ai
+          </Link>
         </div>
         <nav>
           <ul className="flex space-x-6 text-sm font-medium text-white/80">
-            <li><Link href="/about" className="hover:text-white transition-colors">About</Link></li>
+            <li><Link href="/about" className="text-white transition-colors">About</Link></li>
             <li><Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
             <li>
-              {isAuthenticated ? (
-                <Link 
-                  href="/account" 
-                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
-                >
-                  My Account
-                </Link>
-              ) : (
-                <Link 
-                  href="/login" 
-                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
-                >
-                  Login
-                </Link>
-              )}
+              <Link 
+                href="/login" 
+                className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+              >
+                Login
+              </Link>
             </li>
           </ul>
         </nav>
       </header>
       
-      {/* Main content */}
-      <main className="flex-1 flex flex-col items-center justify-between relative z-10 px-4">
-        {/* Top section with headline */}
-        <div className="text-center pt-16 pb-8 max-w-2xl mx-auto">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Record, Transcribe, and Analyze
-          </h1>
-          <p className="text-lg text-white/80">
-            Capture your voice with crystal clarity and transform it into actionable insights with our AI-powered tools.
-          </p>
-        </div>
-        
-        {/* Bottom section with recorder */}
-        <div className="w-full max-w-md mx-auto mb-8">
-          <AudioRecorder />
+      {/* Main content with centered card */}
+      <main className="flex-1 flex items-center justify-center relative z-10 px-4 py-12">
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-2xl w-full shadow-xl border border-white/20">
+          <h1 className="text-3xl font-bold text-white mb-6">About rec.ai</h1>
+          
+          <div className="space-y-4 text-white/90">
+            <p>
+              rec.ai is a cutting-edge platform designed to transform how you capture, transcribe, and analyze audio content.
+            </p>
+            
+            <p>
+              Our mission is to make audio processing accessible, accurate, and insightful. Whether you're a student recording lectures, 
+              a professional documenting meetings, or a content creator capturing ideas, rec.ai provides the tools you need to turn 
+              spoken words into actionable text and insights.
+            </p>
+            
+            <h2 className="text-xl font-semibold text-white mt-6 mb-3">Key Features</h2>
+            
+            <ul className="list-disc pl-5 space-y-2">
+              <li>High-quality audio recording with noise reduction</li>
+              <li>Accurate speech-to-text transcription powered by advanced AI</li>
+              <li>Intelligent summarization and key point extraction</li>
+              <li>Secure cloud storage with easy sharing options</li>
+              <li>Cross-platform accessibility</li>
+            </ul>
+            
+            <h2 className="text-xl font-semibold text-white mt-6 mb-3">Our Team</h2>
+            
+            <p>
+              rec.ai was founded by a team of audio engineers, AI specialists, and UX designers passionate about 
+              creating tools that enhance productivity and creativity through audio processing.
+            </p>
+            
+            <div className="mt-8 pt-6 border-t border-white/20">
+              <Link 
+                href="/" 
+                className="inline-flex items-center text-pink-300 hover:text-pink-200 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Home
+              </Link>
+            </div>
+          </div>
         </div>
       </main>
     </div>
