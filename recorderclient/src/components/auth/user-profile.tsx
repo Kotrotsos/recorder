@@ -63,52 +63,57 @@ export default function UserProfile() {
   }
 
   if (loading) {
-    return <div className="flex justify-center items-center min-h-[400px]">Loading...</div>
+    return <div className="flex justify-center items-center min-h-[400px] text-white">Loading...</div>
   }
 
   if (!user) {
-    return <div className="flex justify-center items-center min-h-[400px]">Please log in to view your profile.</div>
+    return <div className="flex justify-center items-center min-h-[400px] text-white">Please log in to view your profile.</div>
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold">Your Profile</CardTitle>
-        <CardDescription>
+    <Card className="w-full backdrop-blur-sm bg-white/5 border-0 shadow-lg">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-white">Your Profile</CardTitle>
+        <CardDescription className="text-white/70">
           Manage your account settings
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleUpdateProfile} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-white">Email</Label>
             <Input
               id="email"
               type="email"
               value={email}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               required
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/30 focus:ring-white/30"
             />
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-white/60">
               Changing your email will require confirmation from the new address.
             </p>
           </div>
           {error && (
-            <div className="text-sm font-medium text-red-500">{error}</div>
+            <div className="text-sm font-medium text-red-300">{error}</div>
           )}
           {message && (
-            <div className="text-sm font-medium text-green-500">{message}</div>
+            <div className="text-sm font-medium text-green-300">{message}</div>
           )}
-          <Button type="submit" className="w-full" disabled={updating}>
+          <Button 
+            type="submit" 
+            className="w-full bg-white/20 hover:bg-white/30 text-white" 
+            disabled={updating}
+          >
             {updating ? 'Updating...' : 'Update Profile'}
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <div className="text-sm text-gray-500">
+      <CardFooter className="flex justify-between border-t border-white/10 pt-4">
+        <div className="text-sm text-white/60">
           User ID: {user.id.substring(0, 8)}...
         </div>
-        <LogoutButton variant="outline" />
+        <LogoutButton variant="outline" className="bg-white/10 hover:bg-white/20 text-white border-white/20" />
       </CardFooter>
     </Card>
   )

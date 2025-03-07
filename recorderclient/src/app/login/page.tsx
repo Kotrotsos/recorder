@@ -1,4 +1,5 @@
 import LoginForm from '@/components/auth/login-form'
+import AuthLayout from '@/components/auth/auth-layout'
 
 export const metadata = {
   title: 'Login | Audio Recorder',
@@ -7,11 +8,8 @@ export const metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="container mx-auto py-10">
-      <div className="max-w-md mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-6">Welcome Back</h1>
-        <LoginForm />
-      </div>
-    </div>
+    <AuthLayout title="Welcome Back" description="Sign in to your account to continue">
+      <LoginForm />
+    </AuthLayout>
   )
 } 

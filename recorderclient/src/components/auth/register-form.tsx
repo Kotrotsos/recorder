@@ -63,17 +63,17 @@ export default function RegisterForm() {
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold">Register</CardTitle>
-        <CardDescription>
+    <Card className="w-full backdrop-blur-sm bg-white/5 border-0 shadow-lg">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-white">Register</CardTitle>
+        <CardDescription className="text-white/70">
           Create a new account to get started
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleRegister} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-white">Email</Label>
             <Input
               id="email"
               type="email"
@@ -81,10 +81,11 @@ export default function RegisterForm() {
               value={email}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               required
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/30 focus:ring-white/30"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-white">Password</Label>
             <Input
               id="password"
               type="password"
@@ -92,10 +93,11 @@ export default function RegisterForm() {
               value={password}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
               required
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/30 focus:ring-white/30"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Label htmlFor="confirmPassword" className="text-white">Confirm Password</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -103,23 +105,28 @@ export default function RegisterForm() {
               value={confirmPassword}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
               required
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/30 focus:ring-white/30"
             />
           </div>
           {error && (
-            <div className="text-sm font-medium text-red-500">{error}</div>
+            <div className="text-sm font-medium text-red-300">{error}</div>
           )}
           {message && (
-            <div className="text-sm font-medium text-green-500">{message}</div>
+            <div className="text-sm font-medium text-green-300">{message}</div>
           )}
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button 
+            type="submit" 
+            className="w-full bg-white/20 hover:bg-white/30 text-white" 
+            disabled={loading}
+          >
             {loading ? 'Registering...' : 'Register'}
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex flex-col space-y-2">
-        <div className="text-sm text-center">
+      <CardFooter className="flex flex-col space-y-2 border-t border-white/10 pt-4">
+        <div className="text-sm text-center text-white/70">
           Already have an account?{' '}
-          <Link href="/login" className="text-blue-500 hover:text-blue-700">
+          <Link href="/login" className="text-white hover:text-white/80 underline underline-offset-4">
             Login
           </Link>
         </div>

@@ -2,16 +2,14 @@
 
 import UserProfile from '@/components/auth/user-profile'
 import ProtectedRoute from '@/components/auth/protected-route'
+import AuthLayout from '@/components/auth/auth-layout'
 
 export default function AccountPage() {
   return (
     <ProtectedRoute>
-      <div className="container mx-auto py-10">
-        <div className="max-w-md mx-auto">
-          <h1 className="text-3xl font-bold text-center mb-6">Your Account</h1>
-          <UserProfile />
-        </div>
-      </div>
+      <AuthLayout title="Your Account" description="Manage your profile and settings">
+        <UserProfile />
+      </AuthLayout>
     </ProtectedRoute>
   )
 } 
