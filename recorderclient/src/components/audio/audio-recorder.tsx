@@ -24,10 +24,10 @@ export default function AudioRecorder({ isAuthenticated = false }: AudioRecorder
   const [uploadedAudioURL, setUploadedAudioURL] = useState<string | null>(null)
   const [isUploadedPlaying, setIsUploadedPlaying] = useState(false)
   const [isPostRecording, setIsPostRecording] = useState(false)
-  const [selectedAiAction, setSelectedAiAction] = useState<string>("transcribe")
+  const [selectedAiAction, setSelectedAiAction] = useState<string>("summarize")
   const [aiProcessing, setAiProcessing] = useState(false)
-  const [aiResult, setAiResult] = useState<string | null>(null)
   const [currentMimeType, setCurrentMimeType] = useState<string>("")
+  const [processedResults, setProcessedResults] = useState<Array<{ id: number; type: string; content: string; generating: boolean }>>([]);
   
   // Recording time limit in seconds based on auth status
   const recordingTimeLimit = isAuthenticated ? 600 : 300; // 10 mins if logged in, 5 mins if not
@@ -211,49 +211,52 @@ export default function AudioRecorder({ isAuthenticated = false }: AudioRecorder
       }
       
       mediaRecorderRef.current.onstop = () => {
-        console.log("MediaRecorder stopped, chunks:", audioChunksRef.current.length)
+        console.log("MediaRecorder stopped, chunks:", audioChunksRef.current.length);
         if (audioChunksRef.current.length === 0) {
-          console.warn("No audio data was recorded")
-          return
+          console.warn("No audio data was recorded");
+          return;
         }
-        
         try {
-          // Always use audio/mp4 for consistency
           console.log("Creating audio blob with MIME type: audio/mp4");
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp4' });
           const url = URL.createObjectURL(audioBlob);
           setAudioURL(url);
           console.log("Audio blob created successfully");
-          console.log("Automatically starting transcription process...");
-          console.log("Audio blob details:", { type: audioBlob.type, size: audioBlob.size });
-          if (selectedAiAction === "transcribe") {
-            setAiProcessing(true);
-            setAiResult(null);
-            (async () => {
-              try {
-                console.log("Calling transcribeAudio with audio blob");
-                const result = await transcribeAudio(audioBlob);
-                if (result.success && result.text) {
-                  console.log("Transcription successful:", result.text.substring(0, 100) + (result.text.length > 100 ? "..." : ""));
-                  setAiResult(result.text);
-                  setTranscriptContent(result.text);
-                } else {
-                  console.error("Transcription failed:", result.error);
-                  setAiResult("Error: " + (result.error || "Unknown transcription error"));
-                }
-              } catch (transcriptionError) {
-                console.error("Error in transcription process:", transcriptionError);
-                setAiResult("Error: " + (transcriptionError instanceof Error ? transcriptionError.message : String(transcriptionError)));
-              } finally {
-                setAiProcessing(false);
+
+          // Start automatic transcription
+          setAiProcessing(true);
+          const newId = new Date().getTime();
+          setProcessedResults(prev => [
+            ...prev,
+            { id: newId, type: "transcribe", content: "", generating: true }
+          ]);
+          (async () => {
+            try {
+              console.log("Calling transcribeAudio with audio blob");
+              const result = await transcribeAudio(audioBlob);
+              let transcript = "";
+              if (result.success && result.text) {
+                transcript = result.text;
+              } else {
+                transcript = "Error: " + (result.error || "Unknown transcription error");
               }
-            })();
-          } else {
-            console.log("Selected AI action is not transcription. Skipping automatic transcription.");
-          }
+              setProcessedResults(prev =>
+                prev.map(entry => entry.id === newId ? { ...entry, content: transcript, generating: false } : entry)
+              );
+              setTranscriptContent(transcript);
+            } catch (e) {
+              console.error("Error in transcription process:", e);
+              setProcessedResults(prev =>
+                prev.map(entry => entry.id === newId ? { ...entry, content: "Error: " + (e instanceof Error ? e.message : String(e)), generating: false } : entry)
+              );
+            } finally {
+              setAiProcessing(false);
+            }
+          })();
+
         } catch (error) {
           console.error("Error creating audio blob:", error);
-          // Try with a generic audio type as fallback
+          // Fallback logic
           try {
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp4' });
             const url = URL.createObjectURL(audioBlob);
@@ -449,7 +452,7 @@ export default function AudioRecorder({ isAuthenticated = false }: AudioRecorder
     setIsPostRecording(false)
     setIsRecording(false)
     setRecordingTime(0)
-    setAiResult(null)
+    setAiProcessing(false)
     setIsPlaying(false)
     
     // Stop audio playback if it's playing
@@ -544,23 +547,31 @@ export default function AudioRecorder({ isAuthenticated = false }: AudioRecorder
   
   // Process with AI
   const processWithAI = () => {
-    setAiProcessing(true)
-    
+    setAiProcessing(true);
+    const newId = new Date().getTime();
+    // Add a new result card with generating state
+    setProcessedResults(prev => [
+      ...prev,
+      { id: newId, type: selectedAiAction, content: "", generating: true }
+    ]);
+
     // Simulate AI processing
     setTimeout(() => {
-      let result = ""
-      
-      if (selectedAiAction === "transcribe") {
-        result = transcriptContent
-      } else if (selectedAiAction === "summarize") {
-        result = "This is a summary of the audio recording. It would contain the key points and main ideas expressed in the recording. In a real implementation, this would be generated by an AI service that analyzes the content of the recording."
+      let result = "";
+      if (selectedAiAction === "summarize") {
+        result = "This is a summary of the audio recording. It would contain the key points and main ideas expressed in the recording. In a real implementation, this would be generated by an AI service that analyzes the content of the recording.";
       } else if (selectedAiAction === "analyze") {
-        result = "This is an analysis of the audio recording. It would contain insights, sentiment analysis, and other analytical information about the content. In a real implementation, this would be generated by an AI service that performs deep analysis of the recording."
+        result = "This is an analysis of the audio recording. It would contain insights, sentiment analysis, and other analytical information about the content. In a real implementation, this would be generated by an AI service that performs deep analysis of the recording.";
       }
-      
-      setAiResult(result)
-      setAiProcessing(false)
-    }, 2000) // Simulate 2 second processing time
+
+      // Update the corresponding result card
+      setProcessedResults(prev =>
+        prev.map(entry => entry.id === newId ? { ...entry, content: result, generating: false } : entry)
+      );
+      setAiProcessing(false);
+      // Collapse the post-recording UI
+      setIsPostRecording(false);
+    }, 2000);
   }
 
   // Helper function to determine the supported MIME type
@@ -591,187 +602,119 @@ export default function AudioRecorder({ isAuthenticated = false }: AudioRecorder
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto overflow-hidden bg-white/10 backdrop-blur-md border-0 shadow-xl">
-      <CardContent className="p-5">
-        <Tabs defaultValue="record" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/10 p-1 rounded-lg">
-            <TabsTrigger
-              value="record"
-              className="data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=active]:shadow-md text-white/70"
-            >
-              Record
-            </TabsTrigger>
-            <TabsTrigger
-              value="upload"
-              className="data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=active]:shadow-md text-white/70"
-            >
-              Upload
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="record" className="space-y-5">
-            {/* Recording controls */}
-            <div className="space-y-4">
-              {/* Timer display - show time remaining when recording, or elapsed time after recording */}
-              {isRecording ? (
-                <div className="text-center">
-                  <div className="text-3xl font-mono font-bold text-white">
-                    {formatTimeRemaining()}
-                  </div>
-                  <div className="text-xs text-white/70 mt-1">
-                    {isAuthenticated 
-                      ? "Premium: 10 minute recording limit" 
-                      : "Free: 5 minute recording limit"}
-                  </div>
-                </div>
-              ) : isPostRecording && (
-                <div className="text-center">
-                  <span className="text-3xl font-mono font-bold text-white">
-                    {formatTime(recordingTime)}
-                  </span>
-                </div>
-              )}
-
-              {/* Control buttons */}
-              <div className="flex justify-center gap-4">
-                {isRecording ? (
-                  <Button
-                    variant="destructive"
-                    style={getStopButtonStyles()}
-                    className="rounded-full p-0 flex items-center justify-center"
-                    onClick={stopRecording}
-                  >
-                    <Square className="h-6 w-6" />
-                  </Button>
-                ) : isPostRecording ? (
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="rounded-full w-12 h-12 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                      onClick={resetRecorder}
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="rounded-full w-12 h-12 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                      onClick={togglePlayRecorded}
-                    >
-                      {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="rounded-full w-12 h-12 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                      onClick={resetRecorder}
-                    >
-                      <PlusCircle className="h-5 w-5" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center">
-                    <Button
-                      variant="default"
-                      style={getRecordingButtonStyles()}
-                      className="rounded-full p-0 flex items-center justify-center mb-2"
-                      onClick={startRecording}
-                    >
-                      <Mic className="h-6 w-6" />
-                    </Button>
-                    <span className="text-xs text-white/60">Tap to record</span>
-                  </div>
-                )}
+    <>
+      {processedResults.length > 0 && (
+        <div className="fixed top-4 left-4 z-50 grid grid-cols-1 gap-4">
+          {processedResults.map(result => (
+            <div key={result.id} className={`p-4 bg-white/10 rounded-lg border border-white/20 text-sm text-white/90 ${result.generating ? "opacity-50" : "opacity-100"}`}>
+              <h4 className="font-medium mb-2 text-white">
+                {result.type === "transcribe" ? "Transcript" : (result.type === "summarize" ? "Summary" : "Analysis")}
+              </h4>
+              <div className="whitespace-pre-line max-h-60 overflow-y-auto">
+                {result.generating ? "Generating..." : result.content}
               </div>
             </div>
+          ))}
+        </div>
+      )}
+      <Card className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-md overflow-hidden bg-white/10 backdrop-blur-md border-0 shadow-xl">
+        <CardContent className="p-5">
+          <Tabs defaultValue="record" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/10 p-1 rounded-lg">
+              <TabsTrigger
+                value="record"
+                className="data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=active]:shadow-md text-white/70"
+              >
+                Record
+              </TabsTrigger>
+              <TabsTrigger
+                value="upload"
+                className="data-[state=active]:bg-white/20 data-[state=active]:text-white data-[state=active]:shadow-md text-white/70"
+              >
+                Upload
+              </TabsTrigger>
+            </TabsList>
 
-            {/* AI Processing section - only show after recording */}
-            {isPostRecording && audioURL && (
-              <div className="space-y-4 mt-6 pt-6 border-t border-white/20">
-                <Select
-                  value={selectedAiAction}
-                  onValueChange={setSelectedAiAction}
-                >
-                  <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30">
-                    <SelectValue placeholder="Select AI action" />
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
-                      <path d="m6 9 6 6 6-6"/>
-                    </svg>
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-white/20 text-white">
-                    <SelectItem value="transcribe" className="text-base focus:bg-white/10 focus:text-white">Transcribe</SelectItem>
-                    <SelectItem value="summarize" className="text-base focus:bg-white/10 focus:text-white">Summarize</SelectItem>
-                    <SelectItem value="analyze" className="text-base focus:bg-white/10 focus:text-white">Analyze</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Button
-                  variant="default"
-                  className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white h-12 text-base"
-                  disabled={aiProcessing}
-                  onClick={processWithAI}
-                >
-                  {aiProcessing ? "Processing..." : `${selectedAiAction.charAt(0).toUpperCase() + selectedAiAction.slice(1)} Audio`}
-                </Button>
-
-                {aiResult && (
-                  <div className="mt-4 p-4 bg-white/10 rounded-lg border border-white/20 text-sm text-white/90">
-                    <h4 className="font-medium mb-2 text-white">
-                      {selectedAiAction === "transcribe"
-                        ? "Transcript"
-                        : selectedAiAction === "summarize"
-                        ? "Summary"
-                        : "Analysis"}
-                    </h4>
-                    <div className="whitespace-pre-line">{aiResult}</div>
+            <TabsContent value="record" className="space-y-5">
+              {/* Recording controls */}
+              <div className="space-y-4">
+                {/* Timer display - show time remaining when recording, or elapsed time after recording */}
+                {isRecording ? (
+                  <div className="text-center">
+                    <div className="text-3xl font-mono font-bold text-white">
+                      {formatTimeRemaining()}
+                    </div>
+                    <div className="text-xs text-white/70 mt-1">
+                      {isAuthenticated 
+                        ? "Premium: 10 minute recording limit" 
+                        : "Free: 5 minute recording limit"}
+                    </div>
+                  </div>
+                ) : isPostRecording && (
+                  <div className="text-center">
+                    <span className="text-3xl font-mono font-bold text-white">
+                      {formatTime(recordingTime)}
+                    </span>
                   </div>
                 )}
-              </div>
-            )}
-          </TabsContent>
 
-          <TabsContent value="upload" className="space-y-5">
-            {!uploadedFile ? (
-              <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-white/20 rounded-lg bg-white/5">
-                <Upload className="h-8 w-8 text-white/50 mb-2" />
-                <p className="text-sm text-white/70 mb-4 text-center">
-                  Upload an audio file to process with AI
-                </p>
-                <input
-                  type="file"
-                  id="audio-upload"
-                  accept="audio/*"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                />
-                <label
-                  htmlFor="audio-upload"
-                  className="inline-flex items-center justify-center px-4 py-2 bg-white/20 text-white text-sm font-medium rounded-md hover:bg-white/30 cursor-pointer transition-colors"
-                >
-                  Select Audio File
-                </label>
-              </div>
-            ) : (
-              <div className="p-4 bg-white/10 rounded-lg border border-white/20">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="font-medium text-white">{uploadedFile.name}</h3>
-                    <p className="text-xs text-white/60">
-                      {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                    onClick={togglePlayUploaded}
-                  >
-                    {isUploadedPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  </Button>
+                {/* Control buttons */}
+                <div className="flex justify-center gap-4">
+                  {isRecording ? (
+                    <Button
+                      variant="destructive"
+                      style={getStopButtonStyles()}
+                      className="rounded-full p-0 flex items-center justify-center"
+                      onClick={stopRecording}
+                    >
+                      <Square className="h-6 w-6" />
+                    </Button>
+                  ) : isPostRecording ? (
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="rounded-full w-12 h-12 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                        onClick={resetRecorder}
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="rounded-full w-12 h-12 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                        onClick={togglePlayRecorded}
+                      >
+                        {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="rounded-full w-12 h-12 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                        onClick={resetRecorder}
+                      >
+                        <PlusCircle className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <Button
+                        variant="default"
+                        style={getRecordingButtonStyles()}
+                        className="rounded-full p-0 flex items-center justify-center mb-2"
+                        onClick={startRecording}
+                      >
+                        <Mic className="h-6 w-6" />
+                      </Button>
+                      <span className="text-xs text-white/60">Tap to record</span>
+                    </div>
+                  )}
                 </div>
+              </div>
 
-                <div className="space-y-4">
+              {/* AI Processing section - only show after recording */}
+              {isPostRecording && audioURL && (
+                <div className="space-y-4 mt-6 pt-6 border-t border-white/20">
                   <Select
                     value={selectedAiAction}
                     onValueChange={setSelectedAiAction}
@@ -783,7 +726,6 @@ export default function AudioRecorder({ isAuthenticated = false }: AudioRecorder
                       </svg>
                     </SelectTrigger>
                     <SelectContent className="bg-slate-800 border-white/20 text-white">
-                      <SelectItem value="transcribe" className="text-base focus:bg-white/10 focus:text-white">Transcribe</SelectItem>
                       <SelectItem value="summarize" className="text-base focus:bg-white/10 focus:text-white">Summarize</SelectItem>
                       <SelectItem value="analyze" className="text-base focus:bg-white/10 focus:text-white">Analyze</SelectItem>
                     </SelectContent>
@@ -797,59 +739,116 @@ export default function AudioRecorder({ isAuthenticated = false }: AudioRecorder
                   >
                     {aiProcessing ? "Processing..." : `${selectedAiAction.charAt(0).toUpperCase() + selectedAiAction.slice(1)} Audio`}
                   </Button>
-
-                  {aiResult && (
-                    <div className="mt-4 p-4 bg-white/10 rounded-lg border border-white/20 text-sm text-white/90">
-                      <h4 className="font-medium mb-2 text-white">
-                        {selectedAiAction === "transcribe"
-                          ? "Transcript"
-                          : selectedAiAction === "summarize"
-                          ? "Summary"
-                          : "Analysis"}
-                      </h4>
-                      <div className="whitespace-pre-line">{aiResult}</div>
-                    </div>
-                  )}
                 </div>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-      {/* Only show footer with save button after recording */}
-      {isPostRecording && audioURL && (
-        <CardFooter className="px-5 py-3 border-t border-white/20 bg-white/5 text-xs text-white/60">
-          <div className="w-full flex justify-between items-center">
-            <span>Audio Recorder</span>
-            <a
-              href="#"
-              className="text-white/80 hover:text-white hover:underline transition-colors"
-              onClick={(e) => {
-                e.preventDefault()
-                if (audioURL) {
-                  const a = document.createElement("a")
-                  a.href = audioURL
-                  const extension = getFileExtensionFromMimeType(currentMimeType);
-                  a.download = `recording.${extension}`
-                  a.click()
-                }
-              }}
-            >
-              <Save className="h-4 w-4 inline-block mr-1" />
-              Save Recording
-            </a>
-          </div>
-        </CardFooter>
-      )}
-      {/* Audio element for playback */}
-      <audio 
-        ref={audioRef} 
-        className="hidden" 
-        controls={false}
-        preload="auto"
-        onError={(e) => console.error("Audio error:", e)}
-      />
-    </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="upload" className="space-y-5">
+              {!uploadedFile ? (
+                <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-white/20 rounded-lg bg-white/5">
+                  <Upload className="h-8 w-8 text-white/50 mb-2" />
+                  <p className="text-sm text-white/70 mb-4 text-center">
+                    Upload an audio file to process with AI
+                  </p>
+                  <input
+                    type="file"
+                    id="audio-upload"
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                  <label
+                    htmlFor="audio-upload"
+                    className="inline-flex items-center justify-center px-4 py-2 bg-white/20 text-white text-sm font-medium rounded-md hover:bg-white/30 cursor-pointer transition-colors"
+                  >
+                    Select Audio File
+                  </label>
+                </div>
+              ) : (
+                <div className="p-4 bg-white/10 rounded-lg border border-white/20">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-medium text-white">{uploadedFile.name}</h3>
+                      <p className="text-xs text-white/60">
+                        {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                      onClick={togglePlayUploaded}
+                    >
+                      {isUploadedPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Select
+                      value={selectedAiAction}
+                      onValueChange={setSelectedAiAction}
+                    >
+                      <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30">
+                        <SelectValue placeholder="Select AI action" />
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
+                          <path d="m6 9 6 6 6-6"/>
+                        </svg>
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-white/20 text-white">
+                        <SelectItem value="summarize" className="text-base focus:bg-white/10 focus:text-white">Summarize</SelectItem>
+                        <SelectItem value="analyze" className="text-base focus:bg-white/10 focus:text-white">Analyze</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Button
+                      variant="default"
+                      className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white h-12 text-base"
+                      disabled={aiProcessing}
+                      onClick={processWithAI}
+                    >
+                      {aiProcessing ? "Processing..." : `${selectedAiAction.charAt(0).toUpperCase() + selectedAiAction.slice(1)} Audio`}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+        {/* Only show footer with save button after recording */}
+        {isPostRecording && audioURL && (
+          <CardFooter className="px-5 py-3 border-t border-white/20 bg-white/5 text-xs text-white/60">
+            <div className="w-full flex justify-between items-center">
+              <span>Audio Recorder</span>
+              <a
+                href="#"
+                className="text-white/80 hover:text-white hover:underline transition-colors"
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (audioURL) {
+                    const a = document.createElement("a")
+                    a.href = audioURL
+                    const extension = getFileExtensionFromMimeType(currentMimeType);
+                    a.download = `recording.${extension}`
+                    a.click()
+                  }
+                }}
+              >
+                <Save className="h-4 w-4 inline-block mr-1" />
+                Save Recording
+              </a>
+            </div>
+          </CardFooter>
+        )}
+        {/* Audio element for playback */}
+        <audio 
+          ref={audioRef} 
+          className="hidden" 
+          controls={false}
+          preload="auto"
+          onError={(e) => console.error("Audio error:", e)}
+        />
+      </Card>
+    </>
   )
 }
 
