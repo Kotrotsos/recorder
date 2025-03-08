@@ -7,7 +7,7 @@ import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase';
 
 // Use dynamic import with SSR disabled for the AudioRecorder component
-const AudioRecorder = dynamic(() => import('@/components/audio/audio-wrapper'), {
+const AudioRecorderWrapper = dynamic(() => import('@/components/audio/audio-wrapper'), {
   ssr: false,
 });
 
@@ -18,7 +18,24 @@ interface PageContentProps {
 export default function PageContent({ user: serverUser }: PageContentProps) {
   // Create a state to ensure the component re-renders when user data is available
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  // Add state to track if there are processed results
+  const [hasProcessedResults, setHasProcessedResults] = useState<boolean>(false);
   
+  // Listen for the custom event from AudioWrapper
+  useEffect(() => {
+    const handleResultsChange = (event: CustomEvent<{ hasResults: boolean }>) => {
+      setHasProcessedResults(event.detail.hasResults);
+    };
+    
+    // Add event listener
+    window.addEventListener('audioResultsChanged', handleResultsChange as EventListener);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('audioResultsChanged', handleResultsChange as EventListener);
+    };
+  }, []);
+
   // Check authentication state using client-side Supabase
   useEffect(() => {
     const checkAuth = async () => {
@@ -160,19 +177,21 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
       
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-between relative z-10 px-4">
-        {/* Top section with headline */}
-        <div className="text-center pt-16 pb-8 max-w-2xl mx-auto">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Record, Transcribe, and Analyze
-          </h1>
-          <p className="text-lg text-white/80">
-            Capture your voice with crystal clarity and transform it into actionable insights with our AI-powered tools.
-          </p>
-        </div>
+        {/* Top section with headline - only show when no results */}
+        {!hasProcessedResults && (
+          <div className="text-center pt-16 pb-8 max-w-2xl mx-auto">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Record, Transcribe, and Analyze
+            </h1>
+            <p className="text-lg text-white/80">
+              Capture your voice with crystal clarity and transform it into actionable insights with our AI-powered tools.
+            </p>
+          </div>
+        )}
         
         {/* Bottom section with recorder */}
         <div className="w-full max-w-md mx-auto mb-8">
-          <AudioRecorder />
+          <AudioRecorderWrapper />
         </div>
       </main>
     </div>
