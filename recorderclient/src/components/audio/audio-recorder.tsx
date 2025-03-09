@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
-import { Upload, Mic, Square, Play, Pause, Save, Trash2, PlusCircle } from "lucide-react"
+import { Upload, Mic, Square, Play, Pause, Save, Trash2, PlusCircle, X, Maximize2, Minimize2, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -28,7 +28,8 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   const [selectedAiAction, setSelectedAiAction] = useState<string>("summarize")
   const [aiProcessing, setAiProcessing] = useState(false)
   const [currentMimeType, setCurrentMimeType] = useState<string>("")
-  const [processedResults, setProcessedResults] = useState<Array<{ id: number; type: string; content: string; generating: boolean }>>([]);
+  const [processedResults, setProcessedResults] = useState<Array<{ id: number; type: string; content: string; generating: boolean; expanded?: boolean }>>([]);
+  const [isMinimized, setIsMinimized] = useState<boolean>(false);
   
   // Recording time limit in seconds based on auth status
   const recordingTimeLimit = isAuthenticated ? 600 : 300; // 10 mins if logged in, 5 mins if not
@@ -546,7 +547,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
       // Add a new result card with generating state
       setProcessedResults(prev => [
         ...prev,
-        { id: newId, type: selectedAiAction, content: "", generating: true }
+        { id: newId, type: selectedAiAction, content: "", generating: true, expanded: false }
       ]);
     }
 
@@ -608,38 +609,114 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     }
   }, [processedResults, onResultsChange]);
 
+  // Function to toggle expanded state for a card
+  const toggleCardExpanded = (id: number) => {
+    setProcessedResults(prev => 
+      prev.map(result => 
+        result.id === id ? { ...result, expanded: !result.expanded } : result
+      )
+    );
+  };
+
   return (
     <>
       {processedResults.length > 0 && (
-        <div className="fixed top-32 inset-x-0 px-8 z-[60] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {processedResults.filter(result => result.type !== "transcribe").map(result => (
-            <div 
-              key={result.id} 
-              className={`w-full h-[250px] bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-lg overflow-hidden flex flex-col ${result.generating ? "opacity-50" : "opacity-100"}`}
-            >
-              <div className="p-4 border-b border-white/20 bg-white/5">
-                <h4 className="font-medium text-white text-base">
-                  {result.type === "summarize" ? "Summary" : "Analysis"}
-                </h4>
-              </div>
-              <div className="p-4 flex-1 overflow-y-auto text-sm text-white/90">
-                {result.generating ? (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="animate-pulse">Generating...</div>
+        <div className="fixed top-32 left-0 right-0 px-8 z-[60] overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 pb-32">
+            {processedResults.filter(result => result.type !== "transcribe").map(result => (
+              <div key={result.id} className={`${result.expanded ? 'col-span-full' : ''} transition-all duration-300`}>
+                <div 
+                  className={`w-full ${result.expanded ? 'min-h-[400px]' : 'h-[250px]'} bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-lg overflow-hidden flex flex-col ${result.generating ? "opacity-50" : "opacity-100"}`}
+                >
+                  <div className="p-4 border-b border-white/20 bg-white/5 flex justify-between items-center">
+                    <h4 className="font-medium text-white text-base">
+                      {result.type === "summarize" ? "Summary" : "Analysis"}
+                    </h4>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white"
+                      onClick={() => toggleCardExpanded(result.id)}
+                      disabled={result.generating}
+                    >
+                      {result.expanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+                    </Button>
                   </div>
-                ) : (
-                  <div className="whitespace-pre-line">
-                    {result.content.includes("This is a") ? 
-                      result.content.replace(/^This is a (summary|analysis) of the audio recording\.\s+/, "") : 
-                      result.content}
+                  <div className={`p-4 flex-1 overflow-y-auto text-sm text-white/90 ${result.expanded ? 'flex flex-col' : ''}`}>
+                    {result.generating ? (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="animate-pulse">Generating...</div>
+                      </div>
+                    ) : (
+                      <>
+                        {result.expanded && (
+                          <div className="mb-4">
+                            <div 
+                              className="p-3 bg-white/5 rounded-lg mb-2 flex justify-between items-center cursor-pointer"
+                              onClick={() => {
+                                const transcriptEl = document.getElementById(`transcript-${result.id}`);
+                                if (transcriptEl) {
+                                  transcriptEl.classList.toggle('hidden');
+                                }
+                              }}
+                            >
+                              <h5 className="font-medium text-white/90 text-sm">Original Transcript</h5>
+                              <ChevronDown className="h-4 w-4 text-white/70" />
+                            </div>
+                            <div id={`transcript-${result.id}`} className="p-3 bg-white/5 rounded-lg hidden">
+                              <div className="whitespace-pre-line text-white/80 text-xs">
+                                {transcriptContent}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <div className={`whitespace-pre-line ${result.expanded ? 'flex-1' : ''}`}>
+                          {result.content.includes("This is a") ? 
+                            result.content.replace(/^This is a (summary|analysis) of the audio recording\.\s+/, "") : 
+                            result.content}
+                        </div>
+                      </>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
-      <Card className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-md overflow-hidden bg-white/10 backdrop-blur-md border-0 shadow-xl z-[100]">
+      <Card className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 ${isMinimized ? 'w-auto' : 'w-full max-w-md'} overflow-hidden bg-white/10 backdrop-blur-md border-0 shadow-xl z-[100] transition-all duration-300`}>
+        <div className="absolute top-2 right-2 z-10">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white"
+            onClick={() => setIsMinimized(!isMinimized)}
+          >
+            {isMinimized ? <Maximize2 className="h-3 w-3" /> : <X className="h-3 w-3" />}
+          </Button>
+        </div>
+        {isMinimized ? (
+          <div className="p-3 flex items-center space-x-3">
+            <Button
+              variant="default"
+              style={getRecordingButtonStyles()}
+              className="rounded-full p-0 flex items-center justify-center h-10 w-10"
+              onClick={() => {
+                if (isRecording) {
+                  stopRecording();
+                } else {
+                  setIsMinimized(false);
+                  startRecording();
+                }
+              }}
+            >
+              {isRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </Button>
+            <span className="text-xs text-white/80 font-medium">
+              {isRecording ? formatTimeRemaining() : "Record Audio"}
+            </span>
+          </div>
+        ) : (
         <CardContent className="p-5">
           <Tabs defaultValue="record" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/10 p-1 rounded-lg">
@@ -864,8 +941,9 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
             </TabsContent>
           </Tabs>
         </CardContent>
-        {/* Only show footer with save button after recording */}
-        {isPostRecording && audioURL && (
+        )}
+        {/* Only show footer with save button after recording and when not minimized */}
+        {isPostRecording && audioURL && !isMinimized && (
           <CardFooter className="px-5 py-3 border-t border-white/20 bg-white/5 text-xs text-white/60">
             <div className="w-full flex justify-between items-center">
               <span>Audio Recorder</span>

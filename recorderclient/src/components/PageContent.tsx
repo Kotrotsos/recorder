@@ -136,7 +136,7 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-700 animated-gradient">
+    <div className="min-h-screen flex flex-col relative bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-700 animated-gradient overflow-y-auto overflow-x-hidden">
       {/* Fancy background elements with subtle animations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-pink-500 rounded-full opacity-20 blur-3xl blob1"></div>
