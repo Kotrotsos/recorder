@@ -1,0 +1,427 @@
+import { createClient } from './supabase-server';
+import { Database } from '@/types/database.types';
+
+/**
+ * Database utility functions for interacting with Supabase
+ */
+
+// Files
+export async function uploadFile(userId: string, file: File) {
+  const supabase = createClient();
+  
+  // Upload file to storage
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Math.random().toString(36).substring(2, 15)}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+  const filePath = `${userId}/${fileName}`;
+  
+  const { data: storageData, error: storageError } = await supabase.storage
+    .from('audio-files')
+    .upload(filePath, file);
+  
+  if (storageError) {
+    throw new Error(`Error uploading file: ${storageError.message}`);
+  }
+  
+  // Create file record in database
+  const { data: fileData, error: fileError } = await supabase
+    .from('files')
+    .insert({
+      user_id: userId,
+      filename: file.name,
+      file_path: filePath,
+      file_size: file.size,
+      mime_type: file.type
+    })
+    .select()
+    .single();
+  
+  if (fileError) {
+    // If there was an error creating the file record, delete the uploaded file
+    await supabase.storage.from('audio-files').remove([filePath]);
+    throw new Error(`Error creating file record: ${fileError.message}`);
+  }
+  
+  return fileData;
+}
+
+export async function getUserFiles(userId: string) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('files')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    throw new Error(`Error fetching files: ${error.message}`);
+  }
+  
+  return data || [];
+}
+
+export async function deleteFile(userId: string, fileId: string) {
+  const supabase = createClient();
+  
+  // Get file path first
+  const { data: fileData, error: fetchError } = await supabase
+    .from('files')
+    .select('file_path')
+    .eq('id', fileId)
+    .eq('user_id', userId)
+    .single();
+  
+  if (fetchError) {
+    throw new Error(`Error fetching file: ${fetchError.message}`);
+  }
+  
+  // Delete file from storage
+  const { error: storageError } = await supabase.storage
+    .from('audio-files')
+    .remove([fileData.file_path]);
+  
+  if (storageError) {
+    throw new Error(`Error deleting file from storage: ${storageError.message}`);
+  }
+  
+  // Delete file record from database
+  const { error: deleteError } = await supabase
+    .from('files')
+    .delete()
+    .eq('id', fileId)
+    .eq('user_id', userId);
+  
+  if (deleteError) {
+    throw new Error(`Error deleting file record: ${deleteError.message}`);
+  }
+  
+  return true;
+}
+
+// Transcriptions
+export async function createTranscription(userId: string, fileId: string, title: string, content: string, duration?: number, metadata?: any) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('transcriptions')
+    .insert({
+      user_id: userId,
+      file_id: fileId,
+      title,
+      content,
+      duration,
+      metadata
+    })
+    .select()
+    .single();
+  
+  if (error) {
+    throw new Error(`Error creating transcription: ${error.message}`);
+  }
+  
+  return data;
+}
+
+export async function getUserTranscriptions(userId: string) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('transcriptions')
+    .select(`
+      *,
+      files (filename, file_path)
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    throw new Error(`Error fetching transcriptions: ${error.message}`);
+  }
+  
+  return data || [];
+}
+
+export async function getTranscription(userId: string, transcriptionId: string) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('transcriptions')
+    .select(`
+      *,
+      files (filename, file_path)
+    `)
+    .eq('id', transcriptionId)
+    .eq('user_id', userId)
+    .single();
+  
+  if (error) {
+    throw new Error(`Error fetching transcription: ${error.message}`);
+  }
+  
+  return data;
+}
+
+export async function updateTranscription(userId: string, transcriptionId: string, updates: Partial<{
+  title: string;
+  content: string;
+  metadata: any;
+}>) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('transcriptions')
+    .update(updates)
+    .eq('id', transcriptionId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+  
+  if (error) {
+    throw new Error(`Error updating transcription: ${error.message}`);
+  }
+  
+  return data;
+}
+
+export async function deleteTranscription(userId: string, transcriptionId: string) {
+  const supabase = createClient();
+  
+  const { error } = await supabase
+    .from('transcriptions')
+    .delete()
+    .eq('id', transcriptionId)
+    .eq('user_id', userId);
+  
+  if (error) {
+    throw new Error(`Error deleting transcription: ${error.message}`);
+  }
+  
+  return true;
+}
+
+// Analyses
+export async function createAnalysis(userId: string, transcriptionId: string, title: string, content: string, analysisType: string, metadata?: any) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('analyses')
+    .insert({
+      user_id: userId,
+      transcription_id: transcriptionId,
+      title,
+      content,
+      analysis_type: analysisType,
+      metadata
+    })
+    .select()
+    .single();
+  
+  if (error) {
+    throw new Error(`Error creating analysis: ${error.message}`);
+  }
+  
+  return data;
+}
+
+export async function getUserAnalyses(userId: string) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('analyses')
+    .select(`
+      *,
+      transcriptions (title, content)
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    throw new Error(`Error fetching analyses: ${error.message}`);
+  }
+  
+  return data || [];
+}
+
+export async function getAnalysesForTranscription(userId: string, transcriptionId: string) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('analyses')
+    .select('*')
+    .eq('transcription_id', transcriptionId)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    throw new Error(`Error fetching analyses: ${error.message}`);
+  }
+  
+  return data || [];
+}
+
+export async function getAnalysis(userId: string, analysisId: string) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('analyses')
+    .select(`
+      *,
+      transcriptions (title, content)
+    `)
+    .eq('id', analysisId)
+    .eq('user_id', userId)
+    .single();
+  
+  if (error) {
+    throw new Error(`Error fetching analysis: ${error.message}`);
+  }
+  
+  return data;
+}
+
+export async function updateAnalysis(userId: string, analysisId: string, updates: Partial<{
+  title: string;
+  content: string;
+  metadata: any;
+}>) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('analyses')
+    .update(updates)
+    .eq('id', analysisId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+  
+  if (error) {
+    throw new Error(`Error updating analysis: ${error.message}`);
+  }
+  
+  return data;
+}
+
+export async function deleteAnalysis(userId: string, analysisId: string) {
+  const supabase = createClient();
+  
+  const { error } = await supabase
+    .from('analyses')
+    .delete()
+    .eq('id', analysisId)
+    .eq('user_id', userId);
+  
+  if (error) {
+    throw new Error(`Error deleting analysis: ${error.message}`);
+  }
+  
+  return true;
+}
+
+// Subscriptions
+export async function getUserSubscription(userId: string) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  
+  if (error && error.code !== 'PGRST116') { // PGRST116 is the error code for "no rows returned"
+    throw new Error(`Error fetching subscription: ${error.message}`);
+  }
+  
+  return data || null;
+}
+
+export async function createOrUpdateSubscription(userId: string, subscriptionData: {
+  plan_id: string;
+  status: string;
+  current_period_start: Date;
+  current_period_end: Date;
+  cancel_at_period_end?: boolean;
+  payment_provider?: string;
+  payment_provider_subscription_id?: string;
+  metadata?: any;
+}) {
+  const supabase = createClient();
+  
+  // Check if user already has a subscription
+  const { data: existingSubscription } = await supabase
+    .from('subscriptions')
+    .select('id')
+    .eq('user_id', userId)
+    .limit(1)
+    .single();
+  
+  if (existingSubscription) {
+    // Update existing subscription
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .update(subscriptionData)
+      .eq('id', existingSubscription.id)
+      .select()
+      .single();
+    
+    if (error) {
+      throw new Error(`Error updating subscription: ${error.message}`);
+    }
+    
+    return data;
+  } else {
+    // Create new subscription
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .insert({
+        user_id: userId,
+        ...subscriptionData
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      throw new Error(`Error creating subscription: ${error.message}`);
+    }
+    
+    return data;
+  }
+}
+
+// User profile
+export async function getUserProfile(userId: string) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  
+  if (error) {
+    throw new Error(`Error fetching profile: ${error.message}`);
+  }
+  
+  return data;
+}
+
+export async function updateUserProfile(userId: string, updates: Partial<{
+  full_name: string;
+  avatar_url: string;
+}>) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', userId)
+    .select()
+    .single();
+  
+  if (error) {
+    throw new Error(`Error updating profile: ${error.message}`);
+  }
+  
+  return data;
+} 

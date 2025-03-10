@@ -10,13 +10,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { transcribeAudio, summarizeText, analyzeText } from "@/lib/api-client"
 import { toast } from "sonner"
+import { useDatabase } from '@/hooks/useDatabase'
 
 interface AudioRecorderProps {
   isAuthenticated: boolean;
   onResultsChange?: (results: Array<{ id: number; type: string; content: string; title?: string; generating: boolean; date?: string }>) => void;
+  initialResults?: Array<{ id: number; type: string; content: string; title?: string; generating: boolean; date?: string }>;
 }
 
-export default function AudioRecorder({ isAuthenticated = false, onResultsChange }: AudioRecorderProps) {
+export default function AudioRecorder({ isAuthenticated = false, onResultsChange, initialResults = [] }: AudioRecorderProps) {
   // Basic state
   const [isRecording, setIsRecording] = useState(false)
   const [audioURL, setAudioURL] = useState<string | null>(null)
@@ -29,8 +31,9 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   const [selectedAiAction, setSelectedAiAction] = useState<string>("summarize")
   const [aiProcessing, setAiProcessing] = useState(false)
   const [currentMimeType, setCurrentMimeType] = useState<string>("")
-  const [processedResults, setProcessedResults] = useState<Array<{ id: number; type: string; content: string; title?: string; generating: boolean; expanded?: boolean; date?: string }>>([]);
+  const [processedResults, setProcessedResults] = useState<Array<{ id: number; type: string; content: string; title?: string; generating: boolean; expanded?: boolean; date?: string }>>(initialResults);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
+  const [lastTranscriptionId, setLastTranscriptionId] = useState<string | null>(null);
   
   // Recording time limit in seconds based on auth status
   const recordingTimeLimit = isAuthenticated ? 600 : 300; // 10 mins if logged in, 5 mins if not
@@ -50,6 +53,15 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   // Visualization state for the recording button
   const [audioLevel, setAudioLevel] = useState<number>(0)
   const visualizationIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Add the useDatabase hook
+  const { 
+    uploadFile, 
+    createTranscription, 
+    createAnalysis,
+    isLoading: isDatabaseLoading,
+    error: databaseError
+  } = useDatabase();
   
   // Effect to check if recording time has reached the limit
   useEffect(() => {
@@ -246,6 +258,37 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               let transcript = "";
               if (result.success && result.text) {
                 transcript = result.text;
+                
+                // Store the audio file and transcription in the database if user is authenticated
+                if (isAuthenticated) {
+                  try {
+                    // Create a File object from the Blob
+                    const file = new File([audioBlob], `recording_${new Date().toISOString()}.mp4`, { 
+                      type: 'audio/mp4' 
+                    });
+                    
+                    // Upload the file to Supabase storage
+                    const fileData = await uploadFile(file);
+                    
+                    if (fileData) {
+                      // Create a transcription record
+                      const transcriptionData = await createTranscription(
+                        fileData.id,
+                        "Recorded Audio Transcription",
+                        transcript,
+                        recordingTime, // Use the recordingTime for recorded audio
+                        { source: "recorder" }
+                      );
+                      
+                      console.log("Transcription saved to database");
+                      
+                      // Store the transcription ID for later use with analyses
+                      setLastTranscriptionId(transcriptionData?.id || null);
+                    }
+                  } catch (dbError) {
+                    console.error("Error saving to database:", dbError);
+                  }
+                }
               } else {
                 transcript = "Error: " + (result.error || "Unknown transcription error");
               }
@@ -511,6 +554,58 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
             toast.success("Transcription complete", {
               description: "Your uploaded file has been transcribed successfully."
             });
+            
+            // Store the uploaded file and transcription in the database if user is authenticated
+            if (isAuthenticated) {
+              try {
+                // Upload the file to Supabase storage
+                const fileData = await uploadFile(file);
+                
+                if (fileData) {
+                  // We need to set the audio source and wait for metadata to load
+                  // to get the duration
+                  const getDuration = () => {
+                    return new Promise<number>((resolve) => {
+                      if (audioRef.current) {
+                        // If the audio element already has metadata loaded
+                        if (audioRef.current.duration) {
+                          resolve(Math.round(audioRef.current.duration));
+                        } else {
+                          // Wait for metadata to load
+                          const handleLoadedMetadata = () => {
+                            const duration = Math.round(audioRef.current!.duration);
+                            audioRef.current!.removeEventListener('loadedmetadata', handleLoadedMetadata);
+                            resolve(duration);
+                          };
+                          audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+                          audioRef.current.src = url;
+                        }
+                      } else {
+                        resolve(0); // Fallback if no audio element
+                      }
+                    });
+                  };
+                  
+                  const duration = await getDuration();
+                  
+                  // Create a transcription record
+                  const transcriptionData = await createTranscription(
+                    fileData.id,
+                    file.name || "Uploaded Audio Transcription",
+                    transcript,
+                    duration,
+                    { source: "upload" }
+                  );
+                  
+                  console.log("Uploaded file and transcription saved to database", transcriptionData);
+                  
+                  // Store the transcription ID for later use with analyses
+                  setLastTranscriptionId(transcriptionData?.id || null);
+                }
+              } catch (dbError) {
+                console.error("Error saving uploaded file to database:", dbError);
+              }
+            }
           } else {
             transcript = "Error: " + (result.error || "Unknown transcription error");
             toast.error("Transcription failed", {
@@ -522,7 +617,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
           console.error("Error in transcription process:", e);
           setTranscriptContent("Error: " + (e instanceof Error ? e.message : String(e)));
           toast.error("Transcription failed", {
-            description: e instanceof Error ? e.message : String(e)
+            description: "An error occurred during transcription."
           });
         } finally {
           setAiProcessing(false);
@@ -608,17 +703,40 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
         const result = await summarizeText(transcriptContent);
         
         if (result.success) {
+          const content = result.content || result.result || "";
+          const title = result.title || "Summary";
+          
           // Update the result card with the generated content
           setProcessedResults(prev => prev.map(item => 
             item.id === newId 
               ? { 
                   ...item, 
-                  content: result.content || result.result || "", 
-                  title: result.title || "Summary", 
+                  content, 
+                  title, 
                   generating: false 
                 } 
               : item
           ));
+          
+          // Store the analysis in the database if user is authenticated
+          if (isAuthenticated) {
+            try {
+              // Use the lastTranscriptionId if available, otherwise use a placeholder
+              const transcriptionId = lastTranscriptionId || "00000000-0000-0000-0000-000000000000";
+              
+              await createAnalysis(
+                transcriptionId,
+                title,
+                content,
+                "summary",
+                { source: "recorder" }
+              );
+              
+              console.log("Summary saved to database");
+            } catch (dbError) {
+              console.error("Error saving summary to database:", dbError);
+            }
+          }
         } else {
           // Handle error
           setProcessedResults(prev => prev.map(item => 
@@ -636,17 +754,40 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
         const result = await analyzeText(transcriptContent);
         
         if (result.success) {
+          const content = result.content || result.result || "";
+          const title = result.title || "Analysis";
+          
           // Update the result card with the generated content
           setProcessedResults(prev => prev.map(item => 
             item.id === newId 
               ? { 
                   ...item, 
-                  content: result.content || result.result || "", 
-                  title: result.title || "Analysis", 
+                  content,
+                  title,
                   generating: false 
                 } 
               : item
           ));
+          
+          // Store the analysis in the database if user is authenticated
+          if (isAuthenticated) {
+            try {
+              // Use the lastTranscriptionId if available, otherwise use a placeholder
+              const transcriptionId = lastTranscriptionId || "00000000-0000-0000-0000-000000000000";
+              
+              await createAnalysis(
+                transcriptionId,
+                title,
+                content,
+                "analysis",
+                { source: "recorder" }
+              );
+              
+              console.log("Analysis saved to database");
+            } catch (dbError) {
+              console.error("Error saving analysis to database:", dbError);
+            }
+          }
         } else {
           // Handle error
           setProcessedResults(prev => prev.map(item => 
@@ -722,6 +863,22 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
       )
     );
   };
+
+  // Add useEffect to show database errors
+  useEffect(() => {
+    if (databaseError) {
+      toast.error("Database Error", {
+        description: databaseError
+      });
+    }
+  }, [databaseError]);
+
+  // Notify parent component about initial results
+  useEffect(() => {
+    if (initialResults.length > 0 && onResultsChange) {
+      onResultsChange(processedResults);
+    }
+  }, [initialResults, onResultsChange, processedResults]);
 
   return (
     <>
