@@ -280,22 +280,52 @@ export function useDatabase() {
       // Ensure user profile exists
       await ensureUserProfile(userId);
       
-      const { data, error } = await supabase
+      // First, get all transcription IDs
+      const { data: transcriptionIds, error: idsError } = await supabase
         .from('transcriptions')
-        .select(`
-          *,
-          files (filename, file_path)
-        `)
+        .select('id')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error('getUserTranscriptions: Error fetching transcriptions:', error);
-        throw new Error(`Error fetching transcriptions: ${error.message}`);
+      if (idsError) {
+        console.error('getUserTranscriptions: Error fetching transcription IDs:', idsError);
+        throw new Error(`Error fetching transcription IDs: ${idsError.message}`);
       }
       
-      console.log('getUserTranscriptions: Fetched transcriptions:', data?.length || 0);
-      return data || [];
+      console.log('getUserTranscriptions: Found transcription IDs:', transcriptionIds?.length || 0);
+      
+      if (!transcriptionIds || transcriptionIds.length === 0) {
+        return [];
+      }
+      
+      // Now fetch each transcription with its full content
+      const transcriptions = [];
+      
+      for (const { id } of transcriptionIds) {
+        const { data: transcription, error: transcriptionError } = await supabase
+          .from('transcriptions')
+          .select(`
+            *,
+            files (filename, file_path)
+          `)
+          .eq('id', id)
+          .single();
+        
+        if (transcriptionError) {
+          console.error(`getUserTranscriptions: Error fetching transcription ${id}:`, transcriptionError);
+          continue;
+        }
+        
+        if (transcription) {
+          console.log(`getUserTranscriptions: Fetched transcription ${id}:`, 
+            transcription.content ? `Content: ${transcription.content.substring(0, 50)}...` : 'No content');
+          transcriptions.push(transcription);
+        }
+      }
+      
+      console.log('getUserTranscriptions: Fetched all transcriptions:', transcriptions.length);
+      
+      return transcriptions;
     } catch (err: any) {
       console.error('getUserTranscriptions: Caught error:', err);
       setError(err.message);

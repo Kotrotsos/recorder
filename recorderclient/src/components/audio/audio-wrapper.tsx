@@ -27,25 +27,33 @@ export default function AudioWrapper() {
           const transcriptions = await getUserTranscriptions();
           console.log('AudioWrapper - Loaded transcriptions:', transcriptions.length, transcriptions);
           
+          // Check if transcriptions have content
+          transcriptions.forEach((t, index) => {
+            console.log(`AudioWrapper - Transcription ${index} content:`, t.content ? `${t.content.substring(0, 50)}...` : 'No content');
+          });
+          
           // Load analyses
           const analyses = await getUserAnalyses();
           console.log('AudioWrapper - Loaded analyses:', analyses.length, analyses);
           
           // Convert to the format expected by the AudioRecorder component
           const formattedResults = [
-            ...transcriptions.map(t => ({
-              id: parseInt(t.id.replace(/-/g, '').substring(0, 13), 16), // Generate a numeric ID from UUID
-              type: 'transcribe',
-              content: t.content,
-              title: t.title,
-              generating: false,
-              date: new Date(t.created_at).toISOString()
-            })),
+            ...transcriptions.map(t => {
+              console.log(`AudioWrapper - Formatting transcription ${t.id}:`, t.content ? `Content: ${t.content.substring(0, 50)}...` : 'No content');
+              return {
+                id: parseInt(t.id.replace(/-/g, '').substring(0, 13), 16), // Generate a numeric ID from UUID
+                type: 'transcribe',
+                content: t.content || '', // Ensure content is never undefined
+                title: t.title || 'Transcription',
+                generating: false,
+                date: new Date(t.created_at).toISOString()
+              };
+            }),
             ...analyses.map(a => ({
               id: parseInt(a.id.replace(/-/g, '').substring(0, 13), 16), // Generate a numeric ID from UUID
               type: a.analysis_type === 'summary' ? 'summarize' : 'analyze',
-              content: a.content,
-              title: a.title,
+              content: a.content || '', // Ensure content is never undefined
+              title: a.title || 'Analysis',
               generating: false,
               date: new Date(a.created_at).toISOString()
             }))
