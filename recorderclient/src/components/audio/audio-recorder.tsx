@@ -9,6 +9,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { transcribeAudio, summarizeText, analyzeText } from "@/lib/api-client"
+import { toast } from "sonner"
 
 interface AudioRecorderProps {
   isAuthenticated: boolean;
@@ -54,8 +55,19 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   useEffect(() => {
     if (isRecording && recordingTime >= recordingTimeLimit) {
       stopRecording();
+      
+      // Show toast notification
+      if (isAuthenticated) {
+        toast.warning("Recording limit reached", {
+          description: "You've reached the 10-minute recording limit."
+        });
+      } else {
+        toast.warning("Recording limit reached", {
+          description: "You've reached the 5-minute recording limit. Sign in for longer recordings."
+        });
+      }
     }
-  }, [isRecording, recordingTime, recordingTimeLimit]);
+  }, [isRecording, recordingTime, recordingTimeLimit, isAuthenticated]);
   
   // Calculate time remaining in seconds
   const timeRemainingSeconds = recordingTimeLimit - recordingTime;
@@ -460,9 +472,9 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     if (files && files.length > 0) {
       const file = files[0]
       
-      // Check if the file is an audio file
-      if (!file.type.startsWith('audio/')) {
-        alert('Please upload an audio file')
+      // Check if the file is an audio or video file (MP4 files are often identified as video/mp4)
+      if (!file.type.startsWith('audio/') && !file.type.startsWith('video/')) {
+        alert('Please upload an audio or video file')
         return
       }
       
@@ -484,6 +496,38 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
       if (isPostRecording) {
         resetRecorder()
       }
+      
+      // Start automatic transcription of the uploaded file
+      setAiProcessing(true);
+      
+      // Convert File to Blob for transcription
+      (async () => {
+        try {
+          console.log("Calling transcribeAudio with uploaded file");
+          const result = await transcribeAudio(file);
+          let transcript = "";
+          if (result.success && result.text) {
+            transcript = result.text;
+            toast.success("Transcription complete", {
+              description: "Your uploaded file has been transcribed successfully."
+            });
+          } else {
+            transcript = "Error: " + (result.error || "Unknown transcription error");
+            toast.error("Transcription failed", {
+              description: result.error || "Unknown transcription error"
+            });
+          }
+          setTranscriptContent(transcript);
+        } catch (e) {
+          console.error("Error in transcription process:", e);
+          setTranscriptContent("Error: " + (e instanceof Error ? e.message : String(e)));
+          toast.error("Transcription failed", {
+            description: e instanceof Error ? e.message : String(e)
+          });
+        } finally {
+          setAiProcessing(false);
+        }
+      })();
     }
   }
   
@@ -949,12 +993,12 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                 <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-white/20 rounded-lg bg-white/5">
                   <Upload className="h-8 w-8 text-white/50 mb-2" />
                   <p className="text-sm text-white/70 mb-4 text-center">
-                    Upload an audio file to process with AI
+                    Upload an audio or video file to process with AI
                   </p>
                   <input
                     type="file"
                     id="audio-upload"
-                    accept="audio/*"
+                    accept="audio/*,video/mp4"
                     className="hidden"
                     onChange={handleFileUpload}
                   />
@@ -962,7 +1006,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                     htmlFor="audio-upload"
                     className="inline-flex items-center justify-center px-4 py-2 bg-white/20 text-white text-sm font-medium rounded-md hover:bg-white/30 cursor-pointer transition-colors"
                   >
-                    Select Audio File
+                    Select File
                   </label>
                 </div>
               ) : (
@@ -983,8 +1027,23 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                       {isUploadedPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                     </Button>
                   </div>
-
-                  <div className="space-y-4">
+                  
+                  {/* Display transcript for uploaded file */}
+                  <div className="mt-4 p-4 bg-white/10 rounded-lg border border-white/20 text-sm text-white/90">
+                    <h4 className="font-medium mb-2 text-white">Transcript</h4>
+                    <div className="whitespace-pre-line max-h-60 overflow-y-auto">
+                      {aiProcessing ? (
+                        <div className="flex items-center justify-center py-4">
+                          <div className="animate-pulse">Generating transcript...</div>
+                        </div>
+                      ) : (
+                        transcriptContent
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* AI Processing options for uploaded file */}
+                  <div className="space-y-4 mt-6 pt-6 border-t border-white/20">
                     <Select
                       value={selectedAiAction}
                       onValueChange={setSelectedAiAction}
@@ -1009,20 +1068,6 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                     >
                       {aiProcessing ? "Processing..." : `${selectedAiAction.charAt(0).toUpperCase() + selectedAiAction.slice(1)} Audio`}
                     </Button>
-
-                    {/* Display transcript in the upload tab */}
-                    <div className="mt-4 p-4 bg-white/10 rounded-lg border border-white/20 text-sm text-white/90">
-                      <h4 className="font-medium mb-2 text-white">Transcript</h4>
-                      <div className="whitespace-pre-line max-h-60 overflow-y-auto">
-                        {aiProcessing ? (
-                          <div className="flex items-center justify-center py-4">
-                            <div className="animate-pulse">Generating transcript...</div>
-                          </div>
-                        ) : (
-                          transcriptContent
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}
