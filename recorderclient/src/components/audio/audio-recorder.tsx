@@ -11,11 +11,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { transcribeAudio, summarizeText, analyzeText } from "@/lib/api-client"
 import { toast } from "sonner"
 import { useDatabase } from '@/hooks/useDatabase'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface AudioRecorderProps {
   isAuthenticated: boolean;
-  onResultsChange?: (results: Array<{ id: number; type: string; content: string; title?: string; generating: boolean; date?: string }>) => void;
-  initialResults?: Array<{ id: number; type: string; content: string; title?: string; generating: boolean; date?: string }>;
+  onResultsChange?: (results: Array<{ id: number; type: string; content: string; title?: string; generating: boolean; date?: string; originalId?: string }>) => void;
+  initialResults?: Array<{ id: number; type: string; content: string; title?: string; generating: boolean; date?: string; originalId?: string }>;
 }
 
 export default function AudioRecorder({ isAuthenticated = false, onResultsChange, initialResults = [] }: AudioRecorderProps) {
@@ -31,9 +41,13 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   const [selectedAiAction, setSelectedAiAction] = useState<string>("summarize")
   const [aiProcessing, setAiProcessing] = useState(false)
   const [currentMimeType, setCurrentMimeType] = useState<string>("")
-  const [processedResults, setProcessedResults] = useState<Array<{ id: number; type: string; content: string; title?: string; generating: boolean; expanded?: boolean; date?: string }>>(initialResults);
+  const [processedResults, setProcessedResults] = useState<Array<{ id: number; type: string; content: string; title?: string; generating: boolean; expanded?: boolean; date?: string; originalId?: string }>>(initialResults);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
   const [lastTranscriptionId, setLastTranscriptionId] = useState<string | null>(null);
+  
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ id: number; type: string; originalId: string | null }>({ id: 0, type: '', originalId: null });
   
   // Recording time limit in seconds based on auth status
   const recordingTimeLimit = isAuthenticated ? 600 : 300; // 10 mins if logged in, 5 mins if not
@@ -59,6 +73,9 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   const [transcriptMap, setTranscriptMap] = useState<Record<number, string>>({});
   // Convert lastTranscriptionId to a numeric ID for use with the transcript map
   const [lastTranscriptionNumericId, setLastTranscriptionNumericId] = useState<number | null>(null);
+
+  // Map to store original IDs for each result
+  const [originalIdMap, setOriginalIdMap] = useState<Record<number, string>>({});
 
   // Initialize transcriptMap from initialResults
   useEffect(() => {
@@ -131,8 +148,10 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     uploadFile, 
     createTranscription, 
     createAnalysis,
-    isLoading: isDatabaseLoading,
-    error: databaseError
+    deleteTranscription,
+    deleteAnalysis,
+    isLoading: dbLoading, 
+    error: databaseError 
   } = useDatabase();
   
   // Effect to check if recording time has reached the limit
@@ -364,6 +383,12 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                         setTranscriptMap(prevMap => ({
                           ...prevMap,
                           [numericId]: transcript
+                        }));
+                        
+                        // Also store the original ID in the originalIdMap
+                        setOriginalIdMap(prevMap => ({
+                          ...prevMap,
+                          [numericId]: transcriptionData.id
                         }));
                       }
                     }
@@ -692,6 +717,12 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                       ...prevMap,
                       [numericId]: transcript
                     }));
+                    
+                    // Also store the original ID in the originalIdMap
+                    setOriginalIdMap(prevMap => ({
+                      ...prevMap,
+                      [numericId]: transcriptionData.id
+                    }));
                   }
                 }
               } catch (dbError) {
@@ -816,7 +847,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               // Use the lastTranscriptionId if available, otherwise use a placeholder
               const transcriptionId = lastTranscriptionId || "00000000-0000-0000-0000-000000000000";
               
-              await createAnalysis(
+              const analysisData = await createAnalysis(
                 transcriptionId,
                 title,
                 content,
@@ -825,6 +856,27 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               );
               
               console.log("Summary saved to database");
+              
+              // Add the new result to the processed results
+              const newResult = {
+                id: Date.now(),
+                type: selectedAiAction,
+                content: result.success && result.content ? result.content : "Error generating summary",
+                title: result.title || "Summary",
+                generating: false,
+                date: new Date().toISOString(),
+                originalId: analysisData?.id
+              };
+              
+              // If we have an analysis ID, store it in the originalIdMap
+              if (analysisData?.id) {
+                setOriginalIdMap(prevMap => ({
+                  ...prevMap,
+                  [newResult.id]: analysisData.id
+                }));
+              }
+              
+              setProcessedResults(prev => [newResult, ...prev]);
             } catch (dbError) {
               console.error("Error saving summary to database:", dbError);
             }
@@ -867,7 +919,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               // Use the lastTranscriptionId if available, otherwise use a placeholder
               const transcriptionId = lastTranscriptionId || "00000000-0000-0000-0000-000000000000";
               
-              await createAnalysis(
+              const analysisData = await createAnalysis(
                 transcriptionId,
                 title,
                 content,
@@ -876,6 +928,27 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               );
               
               console.log("Analysis saved to database");
+              
+              // Add the new result to the processed results
+              const newResult = {
+                id: Date.now(),
+                type: selectedAiAction,
+                content: result.success && result.content ? result.content : "Error generating analysis",
+                title: result.title || "Analysis",
+                generating: false,
+                date: new Date().toISOString(),
+                originalId: analysisData?.id
+              };
+              
+              // If we have an analysis ID, store it in the originalIdMap
+              if (analysisData?.id) {
+                setOriginalIdMap(prevMap => ({
+                  ...prevMap,
+                  [newResult.id]: analysisData.id
+                }));
+              }
+              
+              setProcessedResults(prev => [newResult, ...prev]);
             } catch (dbError) {
               console.error("Error saving analysis to database:", dbError);
             }
@@ -1004,18 +1077,99 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     }
   }, [initialResults]);
 
+  // Function to handle delete confirmation
+  const handleDeleteClick = (id: number, type: string, originalId: string | null) => {
+    console.log(`AudioRecorder - Opening delete confirmation for ${type} ID ${id}, original ID: ${originalId}`);
+    setItemToDelete({ id, type, originalId });
+    setDeleteDialogOpen(true);
+  };
+
+  // Function to handle actual deletion
+  const handleConfirmDelete = async () => {
+    console.log(`AudioRecorder - Confirming delete for ${itemToDelete.type} ID ${itemToDelete.id}`);
+    
+    if (!itemToDelete.originalId) {
+      console.error('Cannot delete item: missing original ID');
+      toast.error('Delete failed', { description: 'Could not find the item to delete' });
+      return;
+    }
+    
+    try {
+      let success = false;
+      
+      if (itemToDelete.type === 'transcribe') {
+        success = await deleteTranscription(itemToDelete.originalId);
+      } else if (itemToDelete.type === 'summarize' || itemToDelete.type === 'analyze') {
+        success = await deleteAnalysis(itemToDelete.originalId);
+      }
+      
+      if (success) {
+        // Remove the item from processedResults
+        setProcessedResults(prevResults => 
+          prevResults.filter(result => result.id !== itemToDelete.id)
+        );
+        
+        // Notify parent component
+        if (onResultsChange) {
+          onResultsChange(processedResults.filter(result => result.id !== itemToDelete.id));
+        }
+        
+        toast.success('Item deleted successfully');
+      } else {
+        toast.error('Delete failed', { description: 'Could not delete the item' });
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      toast.error('Delete failed', { description: String(error) });
+    } finally {
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  // Initialize originalIdMap from initialResults
+  useEffect(() => {
+    if (initialResults.length > 0) {
+      console.log('AudioRecorder - Initializing originalIdMap from initialResults');
+      const newOriginalIdMap: Record<number, string> = {};
+      
+      initialResults.forEach(result => {
+        if (result.originalId) {
+          console.log(`AudioRecorder - Adding original ID to map: ID=${result.id}, Original ID=${result.originalId}`);
+          newOriginalIdMap[result.id] = result.originalId;
+        }
+      });
+      
+      console.log('AudioRecorder - New originalIdMap:', Object.keys(newOriginalIdMap).length, 'entries');
+      setOriginalIdMap(newOriginalIdMap);
+    }
+  }, [initialResults]);
+
   return (
     <>
       {processedResults.length > 0 && (
         <div className="fixed top-32 left-0 right-0 px-8 z-[60] overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-          <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-32">
+          <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-32">
             {processedResults.filter(result => result.type !== "transcribe").map(result => (
               <div key={result.id} className={`${result.expanded ? 'col-span-full' : ''} transition-all duration-300`}>
                 <div 
-                  className={`w-full ${result.expanded ? 'min-h-[400px]' : 'h-[230px]'} bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-lg overflow-hidden flex flex-col ${result.generating ? "opacity-50" : "opacity-100"}`}
+                  className={`w-full ${result.expanded ? 'min-h-[450px]' : 'h-[250px]'} bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-lg overflow-hidden flex flex-col ${result.generating ? "opacity-50" : "opacity-100"}`}
                 >
-                  <div className="p-3 border-b border-white/20 bg-white/5 flex justify-between items-center">
-                    <h4 className="font-medium text-white text-base truncate max-w-[85%]">
+                  <div className="p-3 border-b border-white/20 bg-white/5 flex items-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 rounded-full bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 flex-shrink-0 mr-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Get the original ID from the result or from the originalIdMap
+                        const originalId = result.originalId || originalIdMap[result.id] || null;
+                        handleDeleteClick(result.id, result.type, originalId);
+                      }}
+                      disabled={result.generating}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                    <h4 className="font-medium text-white text-base truncate flex-1">
                       {result.generating ? 
                         (result.type === "summarize" ? "Generating Summary..." : "Generating Analysis...") : 
                         (result.title || (result.type === "summarize" ? "Summary" : "Analysis"))}
@@ -1023,7 +1177,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white"
+                      className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex-shrink-0 ml-2"
                       onClick={() => toggleCardExpanded(result.id)}
                       disabled={result.generating}
                     >
@@ -1045,7 +1199,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                         
                         {result.expanded && (
                           <div className="mt-4">
-                            <div className="flex justify-between items-center cursor-pointer p-2 hover:bg-white/5 rounded-lg"
+                            <div className="flex items-center p-2 hover:bg-white/5 rounded-lg cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const transcriptEl = document.getElementById(`transcript-${result.id}`);
@@ -1068,8 +1222,26 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                                 }
                               }}
                             >
-                              <h5 className="font-medium text-white/90 text-sm">Original Transcript</h5>
-                              <ChevronDown className="h-4 w-4 text-white/70" />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 rounded-full bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 flex-shrink-0 mr-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Find the original transcription ID
+                                  const transcriptionId = lastTranscriptionId;
+                                  if (transcriptionId) {
+                                    handleDeleteClick(result.id, 'transcribe', transcriptionId);
+                                  } else {
+                                    toast.error('Cannot delete transcript', { description: 'Original ID not found' });
+                                  }
+                                }}
+                                disabled={result.generating}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                              <h5 className="font-medium text-white/90 text-sm flex-1 truncate">Original Transcript</h5>
+                              <ChevronDown className="h-4 w-4 text-white/70 flex-shrink-0 ml-2" />
                             </div>
                             <div id={`transcript-${result.id}`} className="p-3 bg-white/5 rounded-lg hidden">
                               <div className="whitespace-pre-line text-white/80 text-xs">
@@ -1111,6 +1283,30 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
           </div>
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-gray-800 border border-gray-700 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              This will permanently delete this {itemToDelete.type === 'transcribe' ? 'transcription' : 
+                itemToDelete.type === 'summarize' ? 'summary' : 'analysis'}.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-700 text-white hover:bg-gray-600">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-600 text-white hover:bg-red-700" 
+              onClick={handleConfirmDelete}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Card className={`fixed bottom-4 left-1/2 transform -translate-x-1/2 ${isMinimized ? 'w-auto' : 'w-full max-w-md'} overflow-hidden bg-white/10 backdrop-blur-md border-0 shadow-xl z-[100] transition-all duration-300`}>
         <div className="absolute top-2 right-2 z-10">
           <Button

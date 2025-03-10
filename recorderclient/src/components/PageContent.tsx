@@ -173,7 +173,7 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
         )}
         
         {/* Bottom section with recorder */}
-        <div className="w-full max-w-md mx-auto mb-8">
+        <div className="w-full max-w-2xl mx-auto mb-8">
           <AudioRecorderWrapper />
         </div>
       </main>

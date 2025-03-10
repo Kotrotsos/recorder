@@ -10,7 +10,7 @@ const RESULTS_EVENT = 'audioResultsChanged'
 
 export default function AudioWrapper() {
   const [hasResults, setHasResults] = useState(false)
-  const [savedResults, setSavedResults] = useState<Array<{ id: number; type: string; content: string; title?: string; generating: boolean; date?: string }>>([])
+  const [savedResults, setSavedResults] = useState<Array<{ id: number; type: string; content: string; title?: string; generating: boolean; date?: string; originalId?: string }>>([])
   const { isAuthenticated, loading: authLoading } = useAuth()
   const { getUserTranscriptions, getUserAnalyses, isLoading, error } = useDatabase()
 
@@ -46,7 +46,8 @@ export default function AudioWrapper() {
                 content: t.content || '', // Ensure content is never undefined
                 title: t.title || 'Transcription',
                 generating: false,
-                date: new Date(t.created_at).toISOString()
+                date: new Date(t.created_at).toISOString(),
+                originalId: t.id // Store the original UUID
               };
             }),
             ...analyses.map(a => ({
@@ -55,7 +56,8 @@ export default function AudioWrapper() {
               content: a.content || '', // Ensure content is never undefined
               title: a.title || 'Analysis',
               generating: false,
-              date: new Date(a.created_at).toISOString()
+              date: new Date(a.created_at).toISOString(),
+              originalId: a.id // Store the original UUID
             }))
           ];
           
@@ -96,7 +98,7 @@ export default function AudioWrapper() {
     }
   }, [savedResults]);
 
-  const handleResultsChange = (results: Array<{ id: number; type: string; content: string; title?: string; generating: boolean; date?: string }>) => {
+  const handleResultsChange = (results: Array<{ id: number; type: string; content: string; title?: string; generating: boolean; date?: string; originalId?: string }>) => {
     console.log('AudioWrapper - Results changed:', results.length);
     // Combine saved results with new results
     const combinedResults = [...savedResults, ...results];
