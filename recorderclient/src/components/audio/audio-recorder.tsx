@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { transcribeAudio } from "@/lib/api-client"
+import { transcribeAudio, summarizeText, analyzeText } from "@/lib/api-client"
 
 interface AudioRecorderProps {
   isAuthenticated: boolean;
@@ -538,7 +538,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   }
   
   // Process with AI
-  const processWithAI = () => {
+  const processWithAI = async () => {
     setAiProcessing(true);
     const newId = new Date().getTime();
     
@@ -559,97 +559,81 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
       ]);
     }
 
-    // Simulate AI processing
-    setTimeout(() => {
-      let result = "";
-      let title = ""; // Add dynamic title
-      
+    try {
       if (selectedAiAction === "summarize") {
-        // Array of possible summary contents
-        const summaryContents = [
-          "The speaker discussed their recent project involving audio transcription and analysis. They mentioned challenges with accuracy in noisy environments and outlined three potential solutions: improved noise filtering, speaker separation algorithms, and context-aware transcription. They plan to implement these improvements over the next two weeks and test with real-world recordings.",
-          
-          "This meeting covered quarterly goals for the marketing team. Key points included increasing social media engagement by 15%, launching the new product campaign by August, and improving customer feedback scores. Team members were assigned specific responsibilities, with progress reviews scheduled bi-weekly.",
-          
-          "The recording contains notes about a new business idea for a mobile app that helps people track and reduce their carbon footprint. The speaker outlined features including transportation emissions calculator, household energy usage tracking, and personalized recommendations. They identified potential partners and a rough timeline for development.",
-          
-          "The speaker recorded thoughts about improving their daily routine. Main points included: starting the day earlier (5:30 AM), incorporating 20 minutes of meditation, planning meals in advance, and dedicating 1 hour to learning new skills. They noted that consistency would be the biggest challenge."
-        ];
+        const result = await summarizeText(transcriptContent);
         
-        // Randomly select content
-        result = summaryContents[Math.floor(Math.random() * summaryContents.length)];
-        
-        // Array of possible summary titles
-        const summaryTitles = [
-          "Key Insights from Your Recording",
-          "Main Points from Your Conversation",
-          "Essential Takeaways from Discussion",
-          "Your Meeting Summarized",
-          "Core Ideas from Your Audio",
-          "Conversation Highlights",
-          "Important Discussion Points",
-          "Quick Summary of Your Recording"
-        ];
-        
-        // Randomly select a title
-        title = summaryTitles[Math.floor(Math.random() * summaryTitles.length)];
-        
+        if (result.success) {
+          // Update the result card with the generated content
+          setProcessedResults(prev => prev.map(item => 
+            item.id === newId 
+              ? { 
+                  ...item, 
+                  content: result.content || result.result || "", 
+                  title: result.title || "Summary", 
+                  generating: false 
+                } 
+              : item
+          ));
+        } else {
+          // Handle error
+          setProcessedResults(prev => prev.map(item => 
+            item.id === newId 
+              ? { 
+                  ...item, 
+                  content: `Error: ${result.error || "Failed to generate summary"}`, 
+                  title: "Error", 
+                  generating: false 
+                } 
+              : item
+          ));
+        }
       } else if (selectedAiAction === "analyze") {
-        // Array of possible analysis contents
-        const analysisContents = [
-          "This recording demonstrates a structured approach to problem-solving. The speaker presents ideas logically, with clear transitions between topics. The tone is primarily analytical (78%) with moments of enthusiasm (22%). Key themes include innovation, efficiency, and practical implementation. The speaker uses technical terminology appropriately, suggesting expertise in the subject matter. Recommendations: Consider adding more concrete examples to illustrate abstract concepts.",
-          
-          "The conversation exhibits a collaborative dynamic between participants. Speaker A contributes 60% of the content, while Speaker B provides 40%. The discussion shows a pattern of proposal → questioning → refinement, indicating effective teamwork. Emotional analysis shows primarily neutral tones (65%) with periods of excitement (25%) and concern (10%). The pace increases when discussing deadlines, suggesting time pressure is a significant factor.",
-          
-          "This recording contains a personal reflection with strong emotional elements. The content follows a narrative structure, beginning with a challenge, exploring options, and concluding with a decision. Sentiment analysis shows a progression from uncertainty (beginning) to confidence (end). The speaker uses first-person perspective consistently and employs metaphorical language to describe complex feelings. The audio contains several significant pauses (3-5 seconds) during critical decision points.",
-          
-          "The presentation in this recording follows a classic persuasive structure. The speaker establishes credibility early, presents a problem, offers a solution, and concludes with a call to action. Language analysis shows effective use of inclusive pronouns ('we', 'our') to build rapport. The argument is supported primarily by statistical evidence (65%) and case studies (35%). The speaker effectively anticipates and addresses potential counterarguments."
-        ];
+        const result = await analyzeText(transcriptContent);
         
-        // Randomly select content
-        result = analysisContents[Math.floor(Math.random() * analysisContents.length)];
-        
-        // Array of possible analysis titles
-        const analysisTitles = [
-          "Detailed Analysis of Discussion Points",
-          "In-depth Examination of Your Recording",
-          "Comprehensive Analysis of Conversation",
-          "Sentiment and Content Analysis",
-          "Analytical Breakdown of Key Themes",
-          "Contextual Analysis of Your Discussion",
-          "Thematic Analysis of Recording",
-          "Conversational Patterns and Insights"
-        ];
-        
-        // Randomly select a title
-        title = analysisTitles[Math.floor(Math.random() * analysisTitles.length)];
+        if (result.success) {
+          // Update the result card with the generated content
+          setProcessedResults(prev => prev.map(item => 
+            item.id === newId 
+              ? { 
+                  ...item, 
+                  content: result.content || result.result || "", 
+                  title: result.title || "Analysis", 
+                  generating: false 
+                } 
+              : item
+          ));
+        } else {
+          // Handle error
+          setProcessedResults(prev => prev.map(item => 
+            item.id === newId 
+              ? { 
+                  ...item, 
+                  content: `Error: ${result.error || "Failed to generate analysis"}`, 
+                  title: "Error", 
+                  generating: false 
+                } 
+              : item
+          ));
+        }
       }
-
-      if (selectedAiAction !== "transcribe") {
-        // Update the corresponding result card
-        setProcessedResults(prev =>
-          prev.map(entry => entry.id === newId ? { ...entry, content: result, title, generating: false } : entry)
-        );
-        // Don't collapse the UI for non-transcript actions
-      } else {
-        // For transcripts, update the transcriptContent state
-        // Generate a more realistic transcript that matches the summaries/analyses
-        const transcripts = [
-          "So I've been working on this audio transcription project for the past few weeks. The main challenge we're facing is accuracy in noisy environments. I've identified three potential solutions we could implement. First, we could improve our noise filtering algorithms. Second, we could implement better speaker separation. And third, we could develop more context-aware transcription that uses the surrounding text to infer words that might be unclear. I'm planning to implement these improvements over the next two weeks and then test them with some real-world recordings to see how much we can improve the accuracy.",
-          
-          "Alright team, let's go over our quarterly goals for marketing. First, we need to increase our social media engagement by at least 15%. Sarah, you'll be leading that initiative. Second, we need to launch the new product campaign by August. That gives us about two months to prepare. John, you'll be working with the product team on that. And finally, we need to improve our customer feedback scores. Our current NPS is at 32, and we want to get it to at least 40 by the end of the quarter. Maria, that's your area. Let's plan to review progress bi-weekly to make sure we're on track.",
-          
-          "I've been thinking about this mobile app idea that helps people track and reduce their carbon footprint. The main features would include a transportation emissions calculator that uses GPS data to estimate emissions from different modes of transport. We'd also have a household energy usage tracker that connects to smart home devices or lets users input their utility bills. And then we'd provide personalized recommendations based on their data. I've identified some potential partners including local utility companies and environmental nonprofits. I think we could have a prototype ready in about three months if we start now.",
-          
-          "Notes to self about improving my daily routine. I need to start waking up earlier, maybe 5:30 AM instead of 7. That would give me time for meditation, which I want to do for at least 20 minutes each morning. I also need to get better at planning my meals in advance to avoid unhealthy takeout. And I want to dedicate at least one hour each day to learning new skills, probably in the evening when I'm usually just scrolling through social media. The biggest challenge will be consistency. I always start these things and then give up after a week or two."
-        ];
-        
-        // Randomly select a transcript
-        setTranscriptContent(transcripts[Math.floor(Math.random() * transcripts.length)]);
-      }
+    } catch (error) {
+      console.error("Error in AI processing:", error);
       
+      // Update the result card with the error
+      setProcessedResults(prev => prev.map(item => 
+        item.id === newId 
+          ? { 
+              ...item, 
+              content: `Error: ${error instanceof Error ? error.message : String(error)}`, 
+              title: "Error", 
+              generating: false 
+            } 
+          : item
+      ));
+    } finally {
       setAiProcessing(false);
-    }, 2000);
+    }
   };
 
   // Helper function to determine the supported MIME type
