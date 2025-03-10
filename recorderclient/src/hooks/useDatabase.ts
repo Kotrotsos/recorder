@@ -335,11 +335,14 @@ export function useDatabase() {
     }
   }, [supabase, ensureUserProfile]);
 
+  // Get a single transcription by ID
   const getTranscription = useCallback(async (transcriptionId: string) => {
     setIsLoading(true);
     setError(null);
     
     try {
+      console.log(`useDatabase - Getting transcription with ID: ${transcriptionId}`);
+      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -351,24 +354,25 @@ export function useDatabase() {
       // Ensure user profile exists
       await ensureUserProfile(userId);
       
+      // Using maybeSingle() instead of single() to avoid the error when no row is found
       const { data, error } = await supabase
         .from('transcriptions')
-        .select(`
-          *,
-          files (filename, file_path)
-        `)
+        .select('*')
         .eq('id', transcriptionId)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
       
       if (error) {
         throw new Error(`Error fetching transcription: ${error.message}`);
       }
       
+      console.log(`useDatabase - Transcription fetch result:`, data ? "Found" : "Not found");
+      
       return data;
     } catch (err: any) {
+      console.error("Error in getTranscription:", err);
       setError(err.message);
-      return null;
+      throw err; // Re-throw to allow caller to handle
     } finally {
       setIsLoading(false);
     }
@@ -575,11 +579,14 @@ export function useDatabase() {
     }
   }, [supabase, ensureUserProfile]);
 
+  // Get a single analysis by ID
   const getAnalysis = useCallback(async (analysisId: string) => {
     setIsLoading(true);
     setError(null);
     
     try {
+      console.log(`useDatabase - Getting analysis with ID: ${analysisId}`);
+      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -591,24 +598,25 @@ export function useDatabase() {
       // Ensure user profile exists
       await ensureUserProfile(userId);
       
+      // Using maybeSingle() instead of single() to avoid the error when no row is found
       const { data, error } = await supabase
         .from('analyses')
-        .select(`
-          *,
-          transcriptions (title, content)
-        `)
+        .select('*')
         .eq('id', analysisId)
-        .eq('user_id', userId)
-        .single();
+        .eq('user_id', userId) // Keep user_id check for security
+        .maybeSingle();
       
       if (error) {
         throw new Error(`Error fetching analysis: ${error.message}`);
       }
       
+      console.log(`useDatabase - Analysis fetch result:`, data ? "Found" : "Not found");
+      
       return data;
     } catch (err: any) {
+      console.error("Error in getAnalysis:", err);
       setError(err.message);
-      return null;
+      throw err; // Re-throw to allow caller to handle
     } finally {
       setIsLoading(false);
     }
