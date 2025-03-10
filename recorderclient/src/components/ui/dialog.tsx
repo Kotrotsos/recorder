@@ -58,11 +58,16 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
+      {/* Always include a title for accessibility, but visually hide it if hideTitle is true */}
       {hideTitle ? (
         <VisuallyHidden>
           <DialogPrimitive.Title>{title}</DialogPrimitive.Title>
         </VisuallyHidden>
-      ) : null}
+      ) : (
+        <div style={{ display: 'none' }}>
+          <DialogPrimitive.Title>{title}</DialogPrimitive.Title>
+        </div>
+      )}
       {children}
     </DialogPrimitive.Content>
   </DialogPortal>

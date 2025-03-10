@@ -132,6 +132,7 @@ export async function getUserTranscriptions(userId: string) {
       files (filename, file_path)
     `)
     .eq('user_id', userId)
+    .eq('deleted', false)
     .order('created_at', { ascending: false });
   
   if (error) {
@@ -152,7 +153,8 @@ export async function getTranscription(userId: string, transcriptionId: string) 
     `)
     .eq('id', transcriptionId)
     .eq('user_id', userId)
-    .single();
+    .eq('deleted', false)
+    .maybeSingle();
   
   if (error) {
     throw new Error(`Error fetching transcription: ${error.message}`);
@@ -186,17 +188,19 @@ export async function updateTranscription(userId: string, transcriptionId: strin
 export async function deleteTranscription(userId: string, transcriptionId: string) {
   const supabase = createClient();
   
-  const { error } = await supabase
+  // Instead of deleting, update the deleted column to true
+  const { data, error } = await supabase
     .from('transcriptions')
-    .delete()
+    .update({ deleted: true })
     .eq('id', transcriptionId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .select();
   
   if (error) {
-    throw new Error(`Error deleting transcription: ${error.message}`);
+    throw new Error(`Error soft-deleting transcription: ${error.message}`);
   }
   
-  return true;
+  return data;
 }
 
 // Analyses
@@ -315,6 +319,27 @@ export async function deleteAnalysis(userId: string, analysisId: string) {
   }
   
   return true;
+}
+
+export async function removeTranscriptionReference(userId: string, analysisId: string) {
+  const supabase = createClient();
+  
+  // Use a placeholder UUID instead of null to work around the not-null constraint
+  const placeholderUUID = '00000000-0000-0000-0000-000000000000';
+  
+  const { data, error } = await supabase
+    .from('analyses')
+    .update({ transcription_id: placeholderUUID })
+    .eq('id', analysisId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+  
+  if (error) {
+    throw new Error(`Error removing transcription reference: ${error.message}`);
+  }
+  
+  return data;
 }
 
 // Subscriptions

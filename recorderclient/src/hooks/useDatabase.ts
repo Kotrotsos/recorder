@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/database.types';
 
 /**
@@ -11,7 +11,6 @@ export function useDatabase() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const supabase = createClient();
 
   // Reset error state
   const resetError = useCallback(() => {
@@ -64,7 +63,7 @@ export function useDatabase() {
       console.error('Error ensuring user profile:', error);
       throw error;
     }
-  }, [supabase]);
+  }, []);
 
   // Files
   const uploadFile = useCallback(async (file: File) => {
@@ -123,7 +122,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, router, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   const getUserFiles = useCallback(async () => {
     setIsLoading(true);
@@ -158,7 +157,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   const deleteFile = useCallback(async (fileId: string) => {
     setIsLoading(true);
@@ -216,7 +215,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, router, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   // Transcriptions
   const createTranscription = useCallback(async (fileId: string, title: string, content: string, duration?: number, metadata?: any) => {
@@ -260,7 +259,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, router, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   const getUserTranscriptions = useCallback(async () => {
     setIsLoading(true);
@@ -285,6 +284,7 @@ export function useDatabase() {
         .from('transcriptions')
         .select('id')
         .eq('user_id', userId)
+        .eq('deleted', false) // Only get non-deleted transcriptions
         .order('created_at', { ascending: false });
       
       if (idsError) {
@@ -333,7 +333,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   // Get a single transcription by ID
   const getTranscription = useCallback(async (transcriptionId: string) => {
@@ -360,6 +360,7 @@ export function useDatabase() {
         .select('*')
         .eq('id', transcriptionId)
         .eq('user_id', userId)
+        .eq('deleted', false) // Only get non-deleted transcriptions
         .maybeSingle();
       
       if (error) {
@@ -376,7 +377,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   const updateTranscription = useCallback(async (transcriptionId: string, updates: Partial<{
     title: string;
@@ -418,7 +419,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, router, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   const deleteTranscription = useCallback(async (transcriptionId: string) => {
     setIsLoading(true);
@@ -436,14 +437,15 @@ export function useDatabase() {
       // Ensure user profile exists
       await ensureUserProfile(userId);
       
+      // Instead of deleting, update the deleted column to true
       const { error } = await supabase
         .from('transcriptions')
-        .delete()
+        .update({ deleted: true })
         .eq('id', transcriptionId)
         .eq('user_id', userId);
       
       if (error) {
-        throw new Error(`Error deleting transcription: ${error.message}`);
+        throw new Error(`Error soft-deleting transcription: ${error.message}`);
       }
       
       router.refresh();
@@ -454,7 +456,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, router, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   // Analyses
   const createAnalysis = useCallback(async (transcriptionId: string, title: string, content: string, analysisType: string, metadata?: any) => {
@@ -498,7 +500,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, router, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   const getUserAnalyses = useCallback(async () => {
     setIsLoading(true);
@@ -541,7 +543,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   const getAnalysesForTranscription = useCallback(async (transcriptionId: string) => {
     setIsLoading(true);
@@ -577,7 +579,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   // Get a single analysis by ID
   const getAnalysis = useCallback(async (analysisId: string) => {
@@ -620,7 +622,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   const updateAnalysis = useCallback(async (analysisId: string, updates: Partial<{
     title: string;
@@ -662,7 +664,40 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, router, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
+
+  // Function to remove transcription reference from an analysis
+  const removeTranscriptionReference = useCallback(async (analysisId: string) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('You must be logged in to update analyses');
+      }
+      
+      const userId = session.user.id;
+      
+      // Ensure user profile exists
+      await ensureUserProfile(userId);
+      
+      // Import the function from db.ts
+      const { removeTranscriptionReference: dbRemoveTranscriptionReference } = await import('@/lib/db');
+      
+      // Call the function
+      const data = await dbRemoveTranscriptionReference(userId, analysisId);
+      
+      router.refresh();
+      return data;
+    } catch (err: any) {
+      setError(err.message);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [router, ensureUserProfile]);
 
   const deleteAnalysis = useCallback(async (analysisId: string) => {
     setIsLoading(true);
@@ -698,7 +733,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, router, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   // User profile
   const getUserProfile = useCallback(async () => {
@@ -734,7 +769,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   const updateUserProfile = useCallback(async (updates: Partial<{
     full_name: string;
@@ -774,7 +809,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, router, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   // Subscription
   const getUserSubscription = useCallback(async () => {
@@ -812,7 +847,7 @@ export function useDatabase() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, ensureUserProfile]);
+  }, [router, ensureUserProfile]);
 
   return {
     isLoading,
@@ -834,6 +869,7 @@ export function useDatabase() {
     getAnalysesForTranscription,
     getAnalysis,
     updateAnalysis,
+    removeTranscriptionReference,
     deleteAnalysis,
     // User profile
     getUserProfile,

@@ -56,6 +56,10 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number; type: string; originalId: string | null }>({ id: 0, type: '', originalId: null });
   
+  // Transcript removal confirmation dialog state
+  const [transcriptRemovalDialogOpen, setTranscriptRemovalDialogOpen] = useState(false);
+  const [transcriptToRemove, setTranscriptToRemove] = useState<{ analysisId: string; resultId: number }>({ analysisId: '', resultId: 0 });
+  
   // Modal state for expanded card
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<{ 
@@ -239,6 +243,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     deleteAnalysis,
     getTranscription,
     getAnalysis,
+    removeTranscriptionReference,
     isLoading: dbLoading, 
     error: databaseError
   } = useDatabase();
@@ -1170,6 +1175,13 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     setDeleteDialogOpen(true);
   };
 
+  // Function to handle transcript removal confirmation
+  const handleTranscriptRemovalClick = (analysisId: string, resultId: number) => {
+    console.log(`AudioRecorder - Opening transcript removal confirmation for analysis ID ${analysisId}, result ID ${resultId}`);
+    setTranscriptToRemove({ analysisId, resultId });
+    setTranscriptRemovalDialogOpen(true);
+  };
+
   // Function to handle actual deletion
   const handleConfirmDelete = async () => {
     console.log(`AudioRecorder - Confirming delete for ${itemToDelete.type} ID ${itemToDelete.id}`);
@@ -1184,8 +1196,10 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
       let success = false;
       
       if (itemToDelete.type === 'transcribe') {
+        // Mark the transcription as deleted instead of actually deleting it
         success = await deleteTranscription(itemToDelete.originalId);
       } else if (itemToDelete.type === 'summarize' || itemToDelete.type === 'analyze') {
+        // For analyses and summaries, actually delete the record
         success = await deleteAnalysis(itemToDelete.originalId);
       }
       
@@ -1251,31 +1265,33 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
       const transcriptionId = analysis.transcription_id;
       console.log(`AudioRecorder - Found transcription_id ${transcriptionId} for analysis ${analysisId}`);
       
-      if (!transcriptionId) {
-        console.log(`AudioRecorder - No transcription_id found for analysis ${analysisId}`);
+      // Check for null or placeholder UUID
+      if (!transcriptionId || transcriptionId === '00000000-0000-0000-0000-000000000000') {
+        console.log(`AudioRecorder - No valid transcription_id found for analysis ${analysisId}`);
         return "No associated transcript found for this analysis.";
       }
       
       // Now get the transcription
       const transcription = await getTranscription(transcriptionId);
       
-      if (transcription) {
-        console.log(`AudioRecorder - Successfully fetched transcription from DB, ID: ${transcriptionId}`);
-        
-        // Use the provided resultId if available, otherwise use lastTranscriptionNumericId
-        const mapKey = resultId !== undefined ? resultId : (lastTranscriptionNumericId || 0);
-        
-        // Update transcript map with the content from the database
-        setTranscriptMap(prevMap => ({
-          ...prevMap,
-          [mapKey]: transcription.content
-        }));
-        
-        return transcription.content;
-      } else {
-        console.log(`AudioRecorder - No transcription found with ID: ${transcriptionId}`);
-        return "Associated transcript not found in the database.";
+      if (!transcription) {
+        console.log(`AudioRecorder - Transcription not found or marked as deleted, ID: ${transcriptionId}`);
+        // Return a special value to indicate the transcript is deleted
+        return "__TRANSCRIPT_DELETED__";
       }
+      
+      console.log(`AudioRecorder - Successfully fetched transcription from DB, ID: ${transcriptionId}`);
+      
+      // Use the provided resultId if available, otherwise use lastTranscriptionNumericId
+      const mapKey = resultId !== undefined ? resultId : (lastTranscriptionNumericId || 0);
+      
+      // Update transcript map with the content from the database
+      setTranscriptMap(prevMap => ({
+        ...prevMap,
+        [mapKey]: transcription.content
+      }));
+      
+      return transcription.content;
     } catch (error) {
       console.error("Error fetching transcription for analysis:", error);
       return "Error loading associated transcript.";
@@ -1320,23 +1336,24 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
       // Get the transcription from the database
       const transcription = await getTranscription(originalId);
       
-      if (transcription) {
-        console.log(`AudioRecorder - Successfully fetched transcription from DB, ID: ${originalId}`);
-        
-        // Use the provided resultId if available, otherwise use lastTranscriptionNumericId
-        const mapKey = resultId !== undefined ? resultId : (lastTranscriptionNumericId || 0);
-        
-        // Update transcript map with the content from the database
-        setTranscriptMap(prevMap => ({
-          ...prevMap,
-          [mapKey]: transcription.content
-        }));
-        
-        return transcription.content;
-      } else {
-        console.log(`AudioRecorder - No transcription found with ID: ${originalId}`);
-        return "Transcript not found in the database.";
+      if (!transcription) {
+        console.log(`AudioRecorder - Transcription not found or marked as deleted, ID: ${originalId}`);
+        // Return a special value to indicate the transcript is deleted
+        return "__TRANSCRIPT_DELETED__";
       }
+      
+      console.log(`AudioRecorder - Successfully fetched transcription from DB, ID: ${originalId}`);
+      
+      // Use the provided resultId if available, otherwise use lastTranscriptionNumericId
+      const mapKey = resultId !== undefined ? resultId : (lastTranscriptionNumericId || 0);
+      
+      // Update transcript map with the content from the database
+      setTranscriptMap(prevMap => ({
+        ...prevMap,
+        [mapKey]: transcription.content
+      }));
+      
+      return transcription.content;
     } catch (error) {
       console.error("Error fetching transcription:", error);
       
@@ -1355,6 +1372,52 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
       return "Error loading transcript.";
     }
   }, [getTranscription, lastTranscriptionNumericId]);
+
+  // Function to handle removing transcription reference
+  const handleRemoveTranscriptionReference = async (analysisId: string, resultId: number) => {
+    console.log(`AudioRecorder - Removing transcription reference from analysis ID ${analysisId}`);
+    
+    if (!analysisId) {
+      console.error('Cannot remove reference: missing analysis ID');
+      toast.error('Operation failed', { description: 'Could not find the analysis' });
+      return;
+    }
+    
+    try {
+      // First, update the UI immediately to remove the expandable section
+      // Set the special value in the transcriptMap to indicate the transcript is deleted
+      setTranscriptMap(prevMap => ({
+        ...prevMap,
+        [resultId]: "__TRANSCRIPT_DELETED__"
+      }));
+      
+      // Close the confirmation dialog
+      setTranscriptRemovalDialogOpen(false);
+      
+      // Show success toast
+      toast.success('Transcript reference removed');
+      
+      // Then, perform the database operation in the background
+      // Get the analysis to find its transcription_id
+      const analysis = await getAnalysis(analysisId);
+      
+      if (!analysis || !analysis.transcription_id) {
+        console.error('No transcription reference found');
+        return;
+      }
+      
+      // Mark the transcription as deleted
+      const success = await deleteTranscription(analysis.transcription_id);
+      
+      if (!success) {
+        console.error('Could not mark the transcript as deleted in the database');
+        // We don't show an error toast here since the UI is already updated
+      }
+    } catch (error) {
+      console.error('Error marking transcript as deleted:', error);
+      // We don't show an error toast here since the UI is already updated
+    }
+  };
 
   return (
     <>
@@ -1444,6 +1507,28 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               onClick={handleConfirmDelete}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Transcript removal confirmation dialog */}
+      <AlertDialog open={transcriptRemovalDialogOpen} onOpenChange={setTranscriptRemovalDialogOpen}>
+        <AlertDialogContent className="bg-gray-800 border border-gray-700 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove transcript reference?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              This will remove the transcript reference from this item.
+              The transcript will be marked as deleted but can be recovered by an administrator if needed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-700 text-white hover:bg-gray-600">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-600 text-white hover:bg-red-700" 
+              onClick={() => handleRemoveTranscriptionReference(transcriptToRemove.analysisId, transcriptToRemove.resultId)}
+            >
+              Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1746,6 +1831,11 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
       {/* Modal for expanded card */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="bg-white/10 backdrop-blur-md border border-white/20 text-white max-w-4xl min-h-[450px] max-h-[80vh] flex flex-col p-0 rounded-lg overflow-hidden shadow-lg">
+          <DialogHeader className="sr-only">
+            <DialogTitle>
+              {selectedCard?.title || (selectedCard?.type === "summarize" ? "Summary" : "Analysis")}
+            </DialogTitle>
+          </DialogHeader>
           <div className="p-3 border-b border-white/20 bg-white/5 flex items-center">
             <h4 className="font-medium text-white text-base truncate flex-1">
               {selectedCard?.title || (selectedCard?.type === "summarize" ? "Summary" : "Analysis")}
@@ -1764,95 +1854,110 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                 </div>
                 
                 <div className="mt-4">
-                  <div className="flex items-center p-2 hover:bg-white/5 rounded-lg cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const transcriptEl = document.getElementById(`modal-transcript-${selectedCard.id}`);
-                      if (transcriptEl) {
-                        transcriptEl.classList.toggle('hidden');
-                        
-                        // If we're showing the transcript, ensure we have the content
-                        if (!transcriptEl.classList.contains('hidden')) {
-                          console.log(`AudioRecorder - Showing transcript for ID ${selectedCard.id}`);
-                          
-                          // If we don't have the content in the map, try to get it
-                          if (!transcriptMap[selectedCard.id]) {
-                            // Set a loading state while we fetch
-                            setTranscriptMap(prevMap => ({
-                              ...prevMap,
-                              [selectedCard.id]: "Loading transcript from database..."
-                            }));
+                  {/* Only show the Original Transcript section when we have a valid transcriptionId that's not deleted */}
+                  {((selectedCard.originalId !== undefined && 
+                     selectedCard.originalId !== null && 
+                     selectedCard.originalId !== '00000000-0000-0000-0000-000000000000') || 
+                    (originalIdMap[selectedCard.id] !== undefined && 
+                     originalIdMap[selectedCard.id] !== null && 
+                     originalIdMap[selectedCard.id] !== '00000000-0000-0000-0000-000000000000')) && 
+                     selectedCard.type !== 'transcribe' && 
+                     transcriptMap[selectedCard.id] !== "__TRANSCRIPT_DELETED__" && (
+                    <>
+                      <div className="flex items-center p-2 hover:bg-white/5 rounded-lg cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const transcriptEl = document.getElementById(`modal-transcript-${selectedCard.id}`);
+                          if (transcriptEl) {
+                            transcriptEl.classList.toggle('hidden');
                             
-                            if (selectedCard.type === 'transcribe' && selectedCard.originalId) {
-                              console.log(`AudioRecorder - Fetching transcript from DB for transcription ID ${selectedCard.originalId}`);
-                              // Fetch from database async
-                              fetchTranscriptionFromDB(selectedCard.originalId, selectedCard.id)
-                                .then(content => {
-                                  if (content) {
-                                    setTranscriptMap(prevMap => ({
-                                      ...prevMap,
-                                      [selectedCard.id]: content
-                                    }));
-                                  }
-                                });
-                            } 
-                            else if ((selectedCard.type === 'summarize' || selectedCard.type === 'analyze') && selectedCard.originalId) {
-                              console.log(`AudioRecorder - Fetching transcript for analysis ID ${selectedCard.originalId}`);
-                              // For summaries and analyses, we need to get the transcription via the analysis record
-                              fetchTranscriptionForAnalysis(selectedCard.originalId, selectedCard.id)
-                                .then(content => {
-                                  if (content) {
-                                    setTranscriptMap(prevMap => ({
-                                      ...prevMap,
-                                      [selectedCard.id]: content
-                                    }));
-                                  }
-                                });
-                            }
-                            else if (selectedCard.content) {
-                              // Fallback to using the content from the card
-                              console.log(`AudioRecorder - Using content from card for ID ${selectedCard.id}`);
-                              setTranscriptMap(prevMap => ({
-                                ...prevMap,
-                                [selectedCard.id]: selectedCard.content
-                              }));
-                            } else {
-                              console.log(`AudioRecorder - No content available for ID ${selectedCard.id}`);
-                              setTranscriptMap(prevMap => ({
-                                ...prevMap,
-                                [selectedCard.id]: "No transcript available"
-                              }));
+                            // If we're showing the transcript, ensure we have the content
+                            if (!transcriptEl.classList.contains('hidden')) {
+                              console.log(`AudioRecorder - Showing transcript for ID ${selectedCard.id}`);
+                              
+                              // If we don't have the content in the map, try to get it
+                              if (!transcriptMap[selectedCard.id]) {
+                                // Set a loading state while we fetch
+                                setTranscriptMap(prevMap => ({
+                                  ...prevMap,
+                                  [selectedCard.id]: "Loading transcript from database..."
+                                }));
+                                
+                                if (selectedCard.type === 'transcribe' && selectedCard.originalId) {
+                                  console.log(`AudioRecorder - Fetching transcript from DB for transcription ID ${selectedCard.originalId}`);
+                                  // Fetch from database async
+                                  fetchTranscriptionFromDB(selectedCard.originalId, selectedCard.id)
+                                    .then(content => {
+                                      if (content) {
+                                        setTranscriptMap(prevMap => ({
+                                          ...prevMap,
+                                          [selectedCard.id]: content
+                                        }));
+                                      }
+                                    });
+                                } 
+                                else if ((selectedCard.type === 'summarize' || selectedCard.type === 'analyze') && selectedCard.originalId) {
+                                  console.log(`AudioRecorder - Fetching transcript for analysis ID ${selectedCard.originalId}`);
+                                  // For summaries and analyses, we need to get the transcription via the analysis record
+                                  fetchTranscriptionForAnalysis(selectedCard.originalId, selectedCard.id)
+                                    .then(content => {
+                                      if (content) {
+                                        setTranscriptMap(prevMap => ({
+                                          ...prevMap,
+                                          [selectedCard.id]: content
+                                        }));
+                                      }
+                                    });
+                                }
+                                else if (selectedCard.content) {
+                                  // Fallback to using the content from the card
+                                  console.log(`AudioRecorder - Using content from card for ID ${selectedCard.id}`);
+                                  setTranscriptMap(prevMap => ({
+                                    ...prevMap,
+                                    [selectedCard.id]: selectedCard.content
+                                  }));
+                                } else {
+                                  console.log(`AudioRecorder - No content available for ID ${selectedCard.id}`);
+                                  setTranscriptMap(prevMap => ({
+                                    ...prevMap,
+                                    [selectedCard.id]: "No transcript available"
+                                  }));
+                                }
+                              }
                             }
                           }
-                        }
-                      }
-                    }}
-                  >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5 rounded-full bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 flex-shrink-0 mr-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Find the original transcription ID
-                        const transcriptionId = lastTranscriptionId;
-                        if (transcriptionId) {
-                          handleDeleteClick(selectedCard.id, 'transcribe', transcriptionId);
-                        } else {
-                          toast.error('Cannot delete transcript', { description: 'Original ID not found' });
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                    <h5 className="font-medium text-white/90 text-sm flex-1 truncate">Original Transcript</h5>
-                    <ChevronDown className="h-4 w-4 text-white/70 flex-shrink-0 ml-2" />
-                  </div>
-                  <div id={`modal-transcript-${selectedCard.id}`} className="p-3 bg-white/5 rounded-lg hidden">
-                    <div className="whitespace-pre-line text-white/80 text-xs">
-                      {transcriptMap[selectedCard.id] || "Loading transcript..."}
-                    </div>
-                  </div>
+                        }}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 rounded-full bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 flex-shrink-0 mr-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Instead of deleting the transcript, just remove the reference
+                            if (selectedCard.originalId && selectedCard.type !== 'transcribe') {
+                              // For analyses and summaries, show the transcript removal confirmation dialog
+                              handleTranscriptRemovalClick(selectedCard.originalId, selectedCard.id);
+                            } else if (selectedCard.originalId && selectedCard.type === 'transcribe') {
+                              // For transcriptions, use the regular delete
+                              handleDeleteClick(selectedCard.id, 'transcribe', selectedCard.originalId);
+                            } else {
+                              toast.error('Cannot remove reference', { description: 'Original ID not found' });
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                        <h5 className="font-medium text-white/90 text-sm flex-1 truncate">Original Transcript</h5>
+                        <ChevronDown className="h-4 w-4 text-white/70 flex-shrink-0 ml-2" />
+                      </div>
+                      <div id={`modal-transcript-${selectedCard.id}`} className="p-3 bg-white/5 rounded-lg hidden">
+                        <div className="whitespace-pre-line text-white/80 text-xs">
+                          {transcriptMap[selectedCard.id] || "Loading transcript..."}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </>
             ) : (
