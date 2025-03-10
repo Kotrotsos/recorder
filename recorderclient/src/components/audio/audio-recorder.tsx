@@ -875,10 +875,22 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
 
   // Notify parent component about initial results
   useEffect(() => {
+    console.log('AudioRecorder - Initial results:', initialResults.length);
+    console.log('AudioRecorder - Processed results:', processedResults.length);
+    
     if (initialResults.length > 0 && onResultsChange) {
+      console.log('AudioRecorder - Notifying parent about initial results');
       onResultsChange(processedResults);
     }
   }, [initialResults, onResultsChange, processedResults]);
+
+  // Set initial results when they change
+  useEffect(() => {
+    if (initialResults.length > 0) {
+      console.log('AudioRecorder - Setting initial results:', initialResults.length);
+      setProcessedResults(initialResults);
+    }
+  }, [initialResults]);
 
   return (
     <>

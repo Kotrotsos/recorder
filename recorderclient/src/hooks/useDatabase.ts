@@ -270,10 +270,12 @@ export function useDatabase() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
+        console.log('getUserTranscriptions: No session found');
         throw new Error('You must be logged in to view transcriptions');
       }
       
       const userId = session.user.id;
+      console.log('getUserTranscriptions: User ID:', userId);
       
       // Ensure user profile exists
       await ensureUserProfile(userId);
@@ -288,11 +290,14 @@ export function useDatabase() {
         .order('created_at', { ascending: false });
       
       if (error) {
+        console.error('getUserTranscriptions: Error fetching transcriptions:', error);
         throw new Error(`Error fetching transcriptions: ${error.message}`);
       }
       
+      console.log('getUserTranscriptions: Fetched transcriptions:', data?.length || 0);
       return data || [];
     } catch (err: any) {
+      console.error('getUserTranscriptions: Caught error:', err);
       setError(err.message);
       return [];
     } finally {
@@ -469,10 +474,12 @@ export function useDatabase() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
+        console.log('getUserAnalyses: No session found');
         throw new Error('You must be logged in to view analyses');
       }
       
       const userId = session.user.id;
+      console.log('getUserAnalyses: User ID:', userId);
       
       // Ensure user profile exists
       await ensureUserProfile(userId);
@@ -487,11 +494,14 @@ export function useDatabase() {
         .order('created_at', { ascending: false });
       
       if (error) {
+        console.error('getUserAnalyses: Error fetching analyses:', error);
         throw new Error(`Error fetching analyses: ${error.message}`);
       }
       
+      console.log('getUserAnalyses: Fetched analyses:', data?.length || 0);
       return data || [];
     } catch (err: any) {
+      console.error('getUserAnalyses: Caught error:', err);
       setError(err.message);
       return [];
     } finally {

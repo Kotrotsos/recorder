@@ -16,20 +16,20 @@ export default function AudioWrapper() {
 
   // Load user's transcriptions and analyses from the database when authenticated
   useEffect(() => {
-    console.log('Auth state changed:', isAuthenticated, 'Loading:', authLoading);
+    console.log('AudioWrapper - Auth state changed:', isAuthenticated, 'Loading:', authLoading);
     
     if (isAuthenticated && !authLoading) {
       const loadUserData = async () => {
         try {
-          console.log('Loading user data...');
+          console.log('AudioWrapper - Loading user data...');
           
           // Load transcriptions
           const transcriptions = await getUserTranscriptions();
-          console.log('Loaded transcriptions:', transcriptions.length);
+          console.log('AudioWrapper - Loaded transcriptions:', transcriptions.length, transcriptions);
           
           // Load analyses
           const analyses = await getUserAnalyses();
-          console.log('Loaded analyses:', analyses.length);
+          console.log('AudioWrapper - Loaded analyses:', analyses.length, analyses);
           
           // Convert to the format expected by the AudioRecorder component
           const formattedResults = [
@@ -57,7 +57,7 @@ export default function AudioWrapper() {
             return new Date(b.date).getTime() - new Date(a.date).getTime();
           });
           
-          console.log('Formatted results:', formattedResults.length);
+          console.log('AudioWrapper - Formatted results:', formattedResults.length, formattedResults);
           
           // Update state
           setSavedResults(formattedResults);
@@ -68,10 +68,10 @@ export default function AudioWrapper() {
             // Dispatch event to hide the header
             const event = new CustomEvent(RESULTS_EVENT, { detail: { hasResults: true } });
             window.dispatchEvent(event);
-            console.log('Dispatched event with hasResults=true');
+            console.log('AudioWrapper - Dispatched event with hasResults=true');
           }
         } catch (err) {
-          console.error('Error loading user data:', err);
+          console.error('AudioWrapper - Error loading user data:', err);
         }
       };
       
@@ -79,7 +79,17 @@ export default function AudioWrapper() {
     }
   }, [isAuthenticated, authLoading, getUserTranscriptions, getUserAnalyses]);
 
+  // Notify parent component when savedResults change
+  useEffect(() => {
+    if (savedResults.length > 0) {
+      console.log('AudioWrapper - Saved results changed, notifying parent:', savedResults.length);
+      const event = new CustomEvent(RESULTS_EVENT, { detail: { hasResults: true } });
+      window.dispatchEvent(event);
+    }
+  }, [savedResults]);
+
   const handleResultsChange = (results: Array<{ id: number; type: string; content: string; title?: string; generating: boolean; date?: string }>) => {
+    console.log('AudioWrapper - Results changed:', results.length);
     // Combine saved results with new results
     const combinedResults = [...savedResults, ...results];
     

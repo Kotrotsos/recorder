@@ -4,7 +4,6 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase';
 import useAuth from '@/hooks/useAuth';
 
 // Use dynamic import with SSR disabled for the AudioRecorder component
@@ -41,9 +40,9 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
   // Log authentication state for debugging
   useEffect(() => {
     console.log('PageContent - Auth state:', isAuthenticated ? 'Authenticated' : 'Not authenticated');
-    console.log('PageContent - Server user:', serverUser ? 'Present' : 'Not present');
+    console.log('PageContent - Auth loading:', authLoading ? 'Loading' : 'Not loading');
     console.log('PageContent - Has results:', hasProcessedResults ? 'Yes' : 'No');
-  }, [isAuthenticated, serverUser, hasProcessedResults]);
+  }, [isAuthenticated, authLoading, hasProcessedResults]);
 
   // Add a style tag for the animation
   useEffect(() => {
