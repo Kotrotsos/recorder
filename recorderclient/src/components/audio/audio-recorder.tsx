@@ -1177,9 +1177,15 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
 
   // Function to handle transcript removal confirmation
   const handleTranscriptRemovalClick = (analysisId: string, resultId: number) => {
-    console.log(`AudioRecorder - Opening transcript removal confirmation for analysis ID ${analysisId}, result ID ${resultId}`);
+    console.log(`AudioRecorder - Handling transcript removal click for analysis ID ${analysisId}, result ID ${resultId}`);
     setTranscriptToRemove({ analysisId, resultId });
     setTranscriptRemovalDialogOpen(true);
+    
+    // Immediately hide the transcript expandable section
+    const transcriptEl = document.getElementById(`modal-transcript-${resultId}`);
+    if (transcriptEl && !transcriptEl.classList.contains('hidden')) {
+      transcriptEl.classList.add('hidden');
+    }
   };
 
   // Function to handle actual deletion
@@ -1386,13 +1392,27 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     try {
       // First, update the UI immediately to remove the expandable section
       // Set the special value in the transcriptMap to indicate the transcript is deleted
-      setTranscriptMap(prevMap => ({
-        ...prevMap,
-        [resultId]: "__TRANSCRIPT_DELETED__"
-      }));
+      setTranscriptMap(prevMap => {
+        console.log(`AudioRecorder - Setting transcript map for ${resultId} to __TRANSCRIPT_DELETED__`);
+        return {
+          ...prevMap,
+          [resultId]: "__TRANSCRIPT_DELETED__"
+        };
+      });
       
       // Close the confirmation dialog
       setTranscriptRemovalDialogOpen(false);
+      
+      // Hide the transcript expandable section if it's open
+      const transcriptEl = document.getElementById(`modal-transcript-${resultId}`);
+      if (transcriptEl && !transcriptEl.classList.contains('hidden')) {
+        transcriptEl.classList.add('hidden');
+      }
+      
+      // Force a re-render of the component by updating the selectedCard
+      if (selectedCard && selectedCard.id === resultId) {
+        setSelectedCard({...selectedCard});
+      }
       
       // Show success toast
       toast.success('Transcript reference removed');
@@ -1418,6 +1438,15 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
       // We don't show an error toast here since the UI is already updated
     }
   };
+
+  // Update selectedCard when modalOpen changes
+  useEffect(() => {
+    if (modalOpen && selectedCard) {
+      console.log(`AudioRecorder - Modal opened for card ID ${selectedCard.id}, type ${selectedCard.type}`);
+      console.log(`AudioRecorder - Transcript map for this card:`, transcriptMap[selectedCard.id]);
+      console.log(`AudioRecorder - Is transcript deleted:`, transcriptMap[selectedCard.id] === "__TRANSCRIPT_DELETED__");
+    }
+  }, [modalOpen, selectedCard, transcriptMap]);
 
   return (
     <>
@@ -1855,14 +1884,12 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                 
                 <div className="mt-4">
                   {/* Only show the Original Transcript section when we have a valid transcriptionId that's not deleted */}
-                  {((selectedCard.originalId !== undefined && 
-                     selectedCard.originalId !== null && 
+                  {selectedCard.type !== 'transcribe' && 
+                   transcriptMap[selectedCard.id] !== "__TRANSCRIPT_DELETED__" &&
+                   ((selectedCard.originalId && 
                      selectedCard.originalId !== '00000000-0000-0000-0000-000000000000') || 
-                    (originalIdMap[selectedCard.id] !== undefined && 
-                     originalIdMap[selectedCard.id] !== null && 
-                     originalIdMap[selectedCard.id] !== '00000000-0000-0000-0000-000000000000')) && 
-                     selectedCard.type !== 'transcribe' && 
-                     transcriptMap[selectedCard.id] !== "__TRANSCRIPT_DELETED__" && (
+                    (originalIdMap[selectedCard.id] && 
+                     originalIdMap[selectedCard.id] !== '00000000-0000-0000-0000-000000000000')) && (
                     <>
                       <div className="flex items-center p-2 hover:bg-white/5 rounded-lg cursor-pointer"
                         onClick={(e) => {
@@ -1928,26 +1955,6 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                           }
                         }}
                       >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 rounded-full bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 flex-shrink-0 mr-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Instead of deleting the transcript, just remove the reference
-                            if (selectedCard.originalId && selectedCard.type !== 'transcribe') {
-                              // For analyses and summaries, show the transcript removal confirmation dialog
-                              handleTranscriptRemovalClick(selectedCard.originalId, selectedCard.id);
-                            } else if (selectedCard.originalId && selectedCard.type === 'transcribe') {
-                              // For transcriptions, use the regular delete
-                              handleDeleteClick(selectedCard.id, 'transcribe', selectedCard.originalId);
-                            } else {
-                              toast.error('Cannot remove reference', { description: 'Original ID not found' });
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
                         <h5 className="font-medium text-white/90 text-sm flex-1 truncate">Original Transcript</h5>
                         <ChevronDown className="h-4 w-4 text-white/70 flex-shrink-0 ml-2" />
                       </div>

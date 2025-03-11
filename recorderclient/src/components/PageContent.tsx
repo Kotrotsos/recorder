@@ -20,12 +20,16 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
   const { isAuthenticated, loading: authLoading } = useAuth();
   // Add state to track if there are processed results
   const [hasProcessedResults, setHasProcessedResults] = useState<boolean>(false);
+  // Add loading state for cards
+  const [cardsLoading, setCardsLoading] = useState<boolean>(true);
   
   // Listen for the custom event from AudioWrapper
   useEffect(() => {
     const handleResultsChange = (event: CustomEvent<{ hasResults: boolean }>) => {
       console.log('Received audioResultsChanged event:', event.detail);
       setHasProcessedResults(event.detail.hasResults);
+      // When we receive results, we're no longer loading
+      setCardsLoading(false);
     };
     
     // Add event listener
@@ -37,12 +41,24 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
     };
   }, []);
 
+  // Set a timeout to stop showing loading state if it takes too long
+  useEffect(() => {
+    if (isAuthenticated) {
+      const timer = setTimeout(() => {
+        setCardsLoading(false);
+      }, 5000); // 5 seconds timeout
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated]);
+
   // Log authentication state for debugging
   useEffect(() => {
     console.log('PageContent - Auth state:', isAuthenticated ? 'Authenticated' : 'Not authenticated');
     console.log('PageContent - Auth loading:', authLoading ? 'Loading' : 'Not loading');
     console.log('PageContent - Has results:', hasProcessedResults ? 'Yes' : 'No');
-  }, [isAuthenticated, authLoading, hasProcessedResults]);
+    console.log('PageContent - Cards loading:', cardsLoading ? 'Loading' : 'Not loading');
+  }, [isAuthenticated, authLoading, hasProcessedResults, cardsLoading]);
 
   // Add a style tag for the animation
   useEffect(() => {
@@ -160,8 +176,8 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
       
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-between relative z-10 px-4">
-        {/* Top section with headline - only show when no results */}
-        {!hasProcessedResults && (
+        {/* Top section with headline - only show when not authenticated and no results */}
+        {!isAuthenticated && !hasProcessedResults && (
           <div className="text-center pt-16 pb-8 max-w-2xl mx-auto">
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Record, Transcribe, and Analyze
@@ -169,6 +185,18 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
             <p className="text-lg text-white/80">
               Capture your voice with crystal clarity and transform it into actionable insights with our AI-powered tools.
             </p>
+          </div>
+        )}
+        
+        {/* Loading indicator - only show when authenticated and cards are loading */}
+        {isAuthenticated && cardsLoading && (
+          <div className="text-center pt-16 pb-8 max-w-2xl mx-auto">
+            <div className="flex justify-center items-center space-x-2">
+              <div className="w-4 h-4 bg-white rounded-full animate-pulse"></div>
+              <div className="w-4 h-4 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-4 h-4 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+            </div>
+            <p className="text-white mt-4">Loading your recordings...</p>
           </div>
         )}
         
