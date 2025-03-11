@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Upload, Mic, Square, Play, Pause, Save, Trash2, PlusCircle, X, Maximize2, Minimize2, ChevronDown, ChevronUp } from "lucide-react"
+import { Upload, Mic, Square, Play, Pause, Save, Trash2, PlusCircle, X, Maximize2, Minimize2, ChevronDown, ChevronUp, Grid, List, ArrowUpDown, ArrowDown, ArrowUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -51,6 +51,10 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   const [processedResults, setProcessedResults] = useState<Array<{ id: number; type: string; content: string; title?: string; generating: boolean; expanded?: boolean; date?: string; originalId?: string }>>(initialResults);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
   const [lastTranscriptionId, setLastTranscriptionId] = useState<string | null>(null);
+  // View mode state
+  const [viewMode, setViewMode] = useState<"card" | "list">("card");
+  // Sort direction state
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -1448,73 +1452,202 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     }
   }, [modalOpen, selectedCard, transcriptMap]);
 
+  // Function to sort results by date
+  const getSortedResults = useCallback(() => {
+    return [...processedResults].filter(result => result.type !== "transcribe").sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return sortDirection === "asc" ? dateA - dateB : dateB - dateA;
+    });
+  }, [processedResults, sortDirection]);
+
+  // Toggle sort direction
+  const toggleSortDirection = () => {
+    setSortDirection(prev => prev === "asc" ? "desc" : "asc");
+  };
+
   return (
     <>
       {processedResults.length > 0 && (
         <div className="fixed top-32 left-0 right-0 px-8 z-[60] overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-          <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-32">
-            {processedResults.filter(result => result.type !== "transcribe").map(result => (
-              <div key={result.id}>
-                <div 
-                  className="w-full h-[250px] bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-lg overflow-hidden flex flex-col relative"
-                >
-                  <div className="p-3 border-b border-white/20 bg-white/5 flex items-center">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 rounded-full bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 flex-shrink-0 mr-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Get the original ID from the result or from the originalIdMap
-                        const originalId = result.originalId || originalIdMap[result.id] || null;
-                        handleDeleteClick(result.id, result.type, originalId);
-                      }}
-                      disabled={result.generating}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                    <h4 className="font-medium text-white text-base truncate flex-1">
-                      {result.generating ? 
-                        (result.type === "summarize" ? "Generating Summary..." : "Generating Analysis...") : 
-                        (result.title || (result.type === "summarize" ? "Summary" : "Analysis"))}
-                    </h4>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex-shrink-0 ml-2"
-                      onClick={() => toggleCardExpanded(result.id)}
-                      disabled={result.generating}
-                    >
-                      <Maximize2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  <div className="p-3 flex-1 overflow-y-auto text-sm text-white/90">
-                    {result.generating ? (
-                      <div className="flex items-center justify-center h-full">
-                        <div className="animate-pulse">Generating...</div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="whitespace-pre-line line-clamp-7">
-                          {result.content.includes("This is a") ? 
-                            result.content.replace(/^This is a (summary|analysis) of the audio recording\.\s+/, "") : 
-                            result.content}
+          <div className="flex justify-end mb-4 space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/70 hover:text-white/90 hover:bg-white/15 flex items-center space-x-1"
+              onClick={toggleSortDirection}
+            >
+              <span>Sort by Date</span>
+              {sortDirection === "asc" ? (
+                <ArrowUp className="h-4 w-4 ml-1" />
+              ) : (
+                <ArrowDown className="h-4 w-4 ml-1" />
+              )}
+            </Button>
+            <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 flex overflow-hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 rounded-none text-white/70 hover:text-white ${viewMode === 'card' ? 'bg-white/20' : ''} hover:bg-white/15`}
+                onClick={() => setViewMode("card")}
+                title="Card View"
+              >
+                <Grid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 rounded-none text-white/70 hover:text-white ${viewMode === 'list' ? 'bg-white/20' : ''} hover:bg-white/15`}
+                onClick={() => setViewMode("list")}
+                title="List View"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          
+          {viewMode === "card" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-32">
+              {getSortedResults().map(result => (
+                <div key={result.id}>
+                  <div 
+                    className="w-full h-[250px] bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-lg overflow-hidden flex flex-col relative"
+                  >
+                    <div className="p-3 border-b border-white/20 bg-white/5 flex items-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 rounded-full bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 flex-shrink-0 mr-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Get the original ID from the result or from the originalIdMap
+                          const originalId = result.originalId || originalIdMap[result.id] || null;
+                          handleDeleteClick(result.id, result.type, originalId);
+                        }}
+                        disabled={result.generating}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                      <h4 className="font-medium text-white text-base truncate flex-1">
+                        {result.generating ? 
+                          (result.type === "summarize" ? "Generating Summary..." : "Generating Analysis...") : 
+                          (result.title || (result.type === "summarize" ? "Summary" : "Analysis"))}
+                      </h4>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex-shrink-0 ml-2"
+                        onClick={() => toggleCardExpanded(result.id)}
+                        disabled={result.generating}
+                      >
+                        <Maximize2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <div className="p-3 flex-1 overflow-y-auto text-sm text-white/90">
+                      {result.generating ? (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="animate-pulse">Generating...</div>
                         </div>
-                        <div className="text-xs text-white/50 absolute bottom-3 left-3 pt-5">
-                          <span>{new Date(result.date || Date.now()).toLocaleDateString('en-US', { 
+                      ) : (
+                        <>
+                          <div className="whitespace-pre-line line-clamp-7">
+                            {result.content.includes("This is a") ? 
+                              result.content.replace(/^This is a (summary|analysis) of the audio recording\.\s+/, "") : 
+                              result.content}
+                          </div>
+                          <div className="text-xs text-white/50 absolute bottom-3 left-3 pt-5">
+                            <span>{new Date(result.date || Date.now()).toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="w-full pb-32">
+              <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-lg overflow-hidden">
+                <table className="w-full text-white/90">
+                  <thead>
+                    <tr className="border-b border-white/20 bg-white/5">
+                      <th className="py-2 px-4 text-left font-medium">Title</th>
+                      <th className="py-2 px-4 text-left font-medium">Type</th>
+                      <th className="py-2 px-4 text-left font-medium">
+                        <div className="flex items-center">
+                          <span>Date</span>
+                          <button 
+                            className="ml-1 text-white/50 hover:text-white/90 inline-flex hover:bg-white/15 rounded-full p-0.5"
+                            onClick={toggleSortDirection}
+                          >
+                            {sortDirection === "asc" ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            )}
+                          </button>
+                        </div>
+                      </th>
+                      <th className="py-2 px-4 text-right font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getSortedResults().map(result => (
+                      <tr key={result.id} className="border-b border-white/10 hover:bg-white/5">
+                        <td className="py-3 px-4">
+                          {result.generating ? 
+                            (result.type === "summarize" ? "Generating Summary..." : "Generating Analysis...") : 
+                            (result.title || (result.type === "summarize" ? "Summary" : "Analysis"))}
+                        </td>
+                        <td className="py-3 px-4">
+                          {result.type === "summarize" ? "Summary" : "Analysis"}
+                        </td>
+                        <td className="py-3 px-4">
+                          {new Date(result.date || Date.now()).toLocaleDateString('en-US', { 
+                            year: 'numeric',
                             month: 'short', 
                             day: 'numeric',
                             hour: '2-digit',
                             minute: '2-digit'
-                          })}</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
+                          })}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white"
+                              onClick={() => toggleCardExpanded(result.id)}
+                              disabled={result.generating}
+                            >
+                              <Maximize2 className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 rounded-full bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400"
+                              onClick={() => {
+                                const originalId = result.originalId || originalIdMap[result.id] || null;
+                                handleDeleteClick(result.id, result.type, originalId);
+                              }}
+                              disabled={result.generating}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
