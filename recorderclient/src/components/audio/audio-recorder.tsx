@@ -942,8 +942,8 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
           // Store the analysis in the database if user is authenticated
           if (isAuthenticated) {
             try {
-              // Use the lastTranscriptionId if available, otherwise use a placeholder
-              const transcriptionId = lastTranscriptionId || "00000000-0000-0000-0000-000000000000";
+              // Use the lastTranscriptionId if available, otherwise use null
+              const transcriptionId = lastTranscriptionId || null;
               
               const analysisData = await createAnalysis(
                 transcriptionId,
@@ -1014,8 +1014,8 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
           // Store the analysis in the database if user is authenticated
           if (isAuthenticated) {
             try {
-              // Use the lastTranscriptionId if available, otherwise use a placeholder
-              const transcriptionId = lastTranscriptionId || "00000000-0000-0000-0000-000000000000";
+              // Use the lastTranscriptionId if available, otherwise use null
+              const transcriptionId = lastTranscriptionId || null;
               
               const analysisData = await createAnalysis(
                 transcriptionId,
@@ -1257,56 +1257,39 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   // Function to get the original transcript from the database for a given analysis
   const fetchTranscriptionForAnalysis = useCallback(async (analysisId: string, resultId?: number) => {
     try {
-      if (!analysisId) {
-        console.error("Cannot fetch transcript: analysisId is undefined or null");
-        return null;
-      }
+      console.log(`AudioRecorder - Fetching transcription for analysis ID ${analysisId}`);
       
-      console.log(`AudioRecorder - Attempting to fetch transcription for analysis with ID: ${analysisId}`);
-      
-      // First get the analysis to find its transcription_id
+      // Get the analysis to find the transcription ID
       const analysis = await getAnalysis(analysisId);
       
+      // Make sure we have an analysis and a valid transcription ID
       if (!analysis) {
-        console.log(`AudioRecorder - No analysis found with ID: ${analysisId}`);
-        return "Analysis not found in the database.";
+        console.log(`AudioRecorder - No analysis found for ID ${analysisId}`);
+        return "No analysis found.";
       }
       
-      const transcriptionId = analysis.transcription_id;
-      console.log(`AudioRecorder - Found transcription_id ${transcriptionId} for analysis ${analysisId}`);
-      
-      // Check for null or placeholder UUID
-      if (!transcriptionId || transcriptionId === '00000000-0000-0000-0000-000000000000') {
-        console.log(`AudioRecorder - No valid transcription_id found for analysis ${analysisId}`);
-        return "No associated transcript found for this analysis.";
+      if (!analysis.transcription_id) {
+        console.log(`AudioRecorder - Analysis has no associated transcription ID`);
+        return "No associated transcript.";
       }
       
-      // Now get the transcription
-      const transcription = await getTranscription(transcriptionId);
+      // Get the transcription details
+      const transcription = await getTranscription(analysis.transcription_id);
       
+      // Check if we have a valid transcription
       if (!transcription) {
-        console.log(`AudioRecorder - Transcription not found or marked as deleted, ID: ${transcriptionId}`);
-        // Return a special value to indicate the transcript is deleted
-        return "__TRANSCRIPT_DELETED__";
+        console.log(`AudioRecorder - No transcription found for ID ${analysis.transcription_id}`);
+        return "Transcript not found.";
       }
       
-      console.log(`AudioRecorder - Successfully fetched transcription from DB, ID: ${transcriptionId}`);
-      
-      // Use the provided resultId if available, otherwise use lastTranscriptionNumericId
-      const mapKey = resultId !== undefined ? resultId : (lastTranscriptionNumericId || 0);
-      
-      // Update transcript map with the content from the database
-      setTranscriptMap(prevMap => ({
-        ...prevMap,
-        [mapKey]: transcription.content
-      }));
-      
-      return transcription.content;
+      // Return the transcription content
+      console.log(`AudioRecorder - Found transcription content for analysis ID ${analysisId}`);
+      return transcription.content || "No content in transcript.";
     } catch (error) {
       console.error("Error fetching transcription for analysis:", error);
       return "Error loading associated transcript.";
     }
-  }, [getAnalysis, getTranscription, lastTranscriptionNumericId]);
+  }, [getAnalysis, getTranscription]);
 
   // Prefetch transcription data for analyses and summaries when component mounts
   useEffect(() => {
@@ -1469,8 +1452,8 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   return (
     <>
       {processedResults.length > 0 && (
-        <div className="fixed top-32 left-0 right-0 px-8 z-[60] overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-          <div className="flex justify-end mb-4 space-x-2">
+        <div className="mx-auto px-2 z-[60] overflow-y-auto custom-scrollbar" style={{ maxHeight: 'calc(100vh - 100px)' }}>
+          <div className="flex justify-center mb-4 space-x-2">
             <Button
               variant="ghost"
               size="sm"
@@ -1507,78 +1490,82 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
           </div>
           
           {viewMode === "card" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-32">
-              {getSortedResults().map(result => (
-                <div key={result.id}>
-                  <div 
-                    className="w-full h-[250px] bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-lg overflow-hidden flex flex-col relative"
-                  >
-                    <div className="p-3 border-b border-white/20 bg-white/5 flex items-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 rounded-full bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 flex-shrink-0 mr-2"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Get the original ID from the result or from the originalIdMap
-                          const originalId = result.originalId || originalIdMap[result.id] || null;
-                          handleDeleteClick(result.id, result.type, originalId);
-                        }}
-                        disabled={result.generating}
+            <div className="flex justify-center pb-20 mt-2">
+              <div className="max-w-6xl w-full">
+                <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                  {getSortedResults().map(result => (
+                    <div key={result.id} className="w-full">
+                      <div 
+                        className="w-full h-[280px] bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-lg overflow-hidden flex flex-col relative"
                       >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                      <h4 className="font-medium text-white text-base truncate flex-1">
-                        {result.generating ? 
-                          (result.type === "summarize" ? "Generating Summary..." : "Generating Analysis...") : 
-                          (result.title || (result.type === "summarize" ? "Summary" : "Analysis"))}
-                      </h4>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex-shrink-0 ml-2"
-                        onClick={() => toggleCardExpanded(result.id)}
-                        disabled={result.generating}
-                      >
-                        <Maximize2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <div className="p-3 flex-1 overflow-y-auto text-sm text-white/90">
-                      {result.generating ? (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="animate-pulse">Generating...</div>
+                        <div className="p-4 border-b border-white/20 bg-white/5 flex items-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 rounded-full bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-400 flex-shrink-0 mr-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Get the original ID from the result or from the originalIdMap
+                              const originalId = result.originalId || originalIdMap[result.id] || null;
+                              handleDeleteClick(result.id, result.type, originalId);
+                            }}
+                            disabled={result.generating}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                          <h4 className="font-medium text-white text-base truncate flex-1">
+                            {result.generating ? 
+                              (result.type === "summarize" ? "Generating Summary..." : "Generating Analysis...") : 
+                              (result.title || (result.type === "summarize" ? "Summary" : "Analysis"))}
+                          </h4>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex-shrink-0 ml-2"
+                            onClick={() => toggleCardExpanded(result.id)}
+                            disabled={result.generating}
+                          >
+                            <Maximize2 className="h-3 w-3" />
+                          </Button>
                         </div>
-                      ) : (
-                        <>
-                          <div className="whitespace-pre-line line-clamp-7">
-                            {result.content.includes("This is a") ? 
-                              result.content.replace(/^This is a (summary|analysis) of the audio recording\.\s+/, "") : 
-                              result.content}
-                          </div>
-                          <div className="text-xs text-white/50 absolute bottom-3 left-3 pt-5">
-                            <span>{new Date(result.date || Date.now()).toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}</span>
-                          </div>
-                        </>
-                      )}
+                        <div className="p-4 flex-1 overflow-y-auto custom-scrollbar text-sm text-white/90">
+                          {result.generating ? (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="animate-pulse">Generating...</div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="whitespace-pre-line line-clamp-7">
+                                {result.content.includes("This is a") ? 
+                                  result.content.replace(/^This is a (summary|analysis) of the audio recording\.\s+/, "") : 
+                                  result.content}
+                              </div>
+                              <div className="text-xs text-white/50 absolute bottom-3 left-3 pt-5">
+                                <span>{new Date(result.date || Date.now()).toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
           ) : (
-            <div className="w-full pb-32">
+            <div className="w-full mx-auto pb-40 custom-scrollbar">
               <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-lg overflow-hidden">
                 <table className="w-full text-white/90">
                   <thead>
                     <tr className="border-b border-white/20 bg-white/5">
-                      <th className="py-2 px-4 text-left font-medium">Title</th>
-                      <th className="py-2 px-4 text-left font-medium">Type</th>
-                      <th className="py-2 px-4 text-left font-medium">
+                      <th className="py-3 px-6 text-left font-medium">Title</th>
+                      <th className="py-3 px-6 text-left font-medium">Type</th>
+                      <th className="py-3 px-6 text-left font-medium">
                         <div className="flex items-center">
                           <span>Date</span>
                           <button 
@@ -1593,21 +1580,21 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                           </button>
                         </div>
                       </th>
-                      <th className="py-2 px-4 text-right font-medium">Actions</th>
+                      <th className="py-3 px-6 text-right font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {getSortedResults().map(result => (
                       <tr key={result.id} className="border-b border-white/10 hover:bg-white/5">
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-6">
                           {result.generating ? 
                             (result.type === "summarize" ? "Generating Summary..." : "Generating Analysis...") : 
                             (result.title || (result.type === "summarize" ? "Summary" : "Analysis"))}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-6">
                           {result.type === "summarize" ? "Summary" : "Analysis"}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-6">
                           {new Date(result.date || Date.now()).toLocaleDateString('en-US', { 
                             year: 'numeric',
                             month: 'short', 
@@ -1616,7 +1603,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                             minute: '2-digit'
                           })}
                         </td>
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-3 px-6 text-right">
                           <div className="flex items-center justify-end space-x-2">
                             <Button
                               variant="ghost"
@@ -2006,7 +1993,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               <X className="h-3 w-3" />
             </DialogClose>
           </div>
-          <div className="p-3 flex-1 overflow-y-auto text-sm text-white/90 flex flex-col">
+          <div className="p-3 flex-1 overflow-y-auto custom-scrollbar text-sm text-white/90 flex flex-col">
             {selectedCard ? (
               <>
                 <div className="whitespace-pre-line flex-1">
@@ -2016,74 +2003,52 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                 </div>
                 
                 <div className="mt-4">
-                  {/* Only show the Original Transcript section when we have a valid transcriptionId that's not deleted */}
+                  {/* Only show the Original Transcript section when we have a valid transcriptionId */}
                   {selectedCard.type !== 'transcribe' && 
-                   transcriptMap[selectedCard.id] !== "__TRANSCRIPT_DELETED__" &&
-                   ((selectedCard.originalId && 
-                     selectedCard.originalId !== '00000000-0000-0000-0000-000000000000') || 
-                    (originalIdMap[selectedCard.id] && 
-                     originalIdMap[selectedCard.id] !== '00000000-0000-0000-0000-000000000000')) && (
+                   ((selectedCard.originalId) || 
+                    (originalIdMap[selectedCard.id])) && (
                     <>
                       <div className="flex items-center p-2 hover:bg-white/5 rounded-lg cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
+                          
+                          // Toggle the visibility of the transcript element
                           const transcriptEl = document.getElementById(`modal-transcript-${selectedCard.id}`);
                           if (transcriptEl) {
                             transcriptEl.classList.toggle('hidden');
+                          }
+                          
+                          // Check if we have a transcript
+                          if (!transcriptMap[selectedCard.id]) {
+                            console.log(`AudioRecorder - Need to fetch transcript for card ${selectedCard.id}`);
                             
-                            // If we're showing the transcript, ensure we have the content
-                            if (!transcriptEl.classList.contains('hidden')) {
-                              console.log(`AudioRecorder - Showing transcript for ID ${selectedCard.id}`);
-                              
-                              // If we don't have the content in the map, try to get it
-                              if (!transcriptMap[selectedCard.id]) {
-                                // Set a loading state while we fetch
-                                setTranscriptMap(prevMap => ({
-                                  ...prevMap,
-                                  [selectedCard.id]: "Loading transcript from database..."
-                                }));
-                                
-                                if (selectedCard.type === 'transcribe' && selectedCard.originalId) {
-                                  console.log(`AudioRecorder - Fetching transcript from DB for transcription ID ${selectedCard.originalId}`);
-                                  // Fetch from database async
-                                  fetchTranscriptionFromDB(selectedCard.originalId, selectedCard.id)
-                                    .then(content => {
-                                      if (content) {
-                                        setTranscriptMap(prevMap => ({
-                                          ...prevMap,
-                                          [selectedCard.id]: content
-                                        }));
-                                      }
-                                    });
-                                } 
-                                else if ((selectedCard.type === 'summarize' || selectedCard.type === 'analyze') && selectedCard.originalId) {
-                                  console.log(`AudioRecorder - Fetching transcript for analysis ID ${selectedCard.originalId}`);
-                                  // For summaries and analyses, we need to get the transcription via the analysis record
-                                  fetchTranscriptionForAnalysis(selectedCard.originalId, selectedCard.id)
-                                    .then(content => {
-                                      if (content) {
-                                        setTranscriptMap(prevMap => ({
-                                          ...prevMap,
-                                          [selectedCard.id]: content
-                                        }));
-                                      }
-                                    });
-                                }
-                                else if (selectedCard.content) {
-                                  // Fallback to using the content from the card
-                                  console.log(`AudioRecorder - Using content from card for ID ${selectedCard.id}`);
-                                  setTranscriptMap(prevMap => ({
-                                    ...prevMap,
-                                    [selectedCard.id]: selectedCard.content
-                                  }));
-                                } else {
-                                  console.log(`AudioRecorder - No content available for ID ${selectedCard.id}`);
-                                  setTranscriptMap(prevMap => ({
-                                    ...prevMap,
-                                    [selectedCard.id]: "No transcript available"
-                                  }));
-                                }
-                              }
+                            // Set a loading state while fetching
+                            setTranscriptMap(prevMap => ({
+                              ...prevMap,
+                              [selectedCard.id]: "Loading transcript..."
+                            }));
+                            
+                            // For transcripts, we can directly use the content
+                            if (selectedCard.type === 'transcribe') {
+                              console.log(`AudioRecorder - Using direct content for transcript card ${selectedCard.id}`);
+                              setTranscriptMap(prevMap => ({
+                                ...prevMap,
+                                [selectedCard.id]: selectedCard.content
+                              }));
+                            }
+                            else if ((selectedCard.type === 'summarize' || selectedCard.type === 'analyze') && 
+                                    selectedCard.originalId) {
+                              console.log(`AudioRecorder - Fetching transcript for analysis ID ${selectedCard.originalId}`);
+                              // For summaries and analyses, we need to get the transcription via the analysis record
+                              fetchTranscriptionForAnalysis(selectedCard.originalId, selectedCard.id)
+                                .then(content => {
+                                  if (content) {
+                                    setTranscriptMap(prevMap => ({
+                                      ...prevMap,
+                                      [selectedCard.id]: content
+                                    }));
+                                  }
+                                });
                             }
                           }
                         }}
@@ -2092,7 +2057,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                         <ChevronDown className="h-4 w-4 text-white/70 flex-shrink-0 ml-2" />
                       </div>
                       <div id={`modal-transcript-${selectedCard.id}`} className="p-3 bg-white/5 rounded-lg hidden">
-                        <div className="whitespace-pre-line text-white/80 text-xs">
+                        <div className="whitespace-pre-line text-white/80 text-xs max-h-[200px] overflow-y-auto custom-scrollbar">
                           {transcriptMap[selectedCard.id] || "Loading transcript..."}
                         </div>
                       </div>

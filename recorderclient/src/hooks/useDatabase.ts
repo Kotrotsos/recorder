@@ -269,115 +269,68 @@ export function useDatabase() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        console.log('getUserTranscriptions: No session found');
-        throw new Error('You must be logged in to view transcriptions');
+        throw new Error('You must be logged in to fetch transcriptions');
       }
       
       const userId = session.user.id;
-      console.log('getUserTranscriptions: User ID:', userId);
       
-      // Ensure user profile exists
-      await ensureUserProfile(userId);
-      
-      // First, get all transcription IDs
-      const { data: transcriptionIds, error: idsError } = await supabase
+      const { data, error } = await supabase
         .from('transcriptions')
-        .select('id')
+        .select(`
+          *,
+          files (filename, file_path)
+        `)
         .eq('user_id', userId)
-        .eq('deleted', false) // Only get non-deleted transcriptions
         .order('created_at', { ascending: false });
       
-      if (idsError) {
-        console.error('getUserTranscriptions: Error fetching transcription IDs:', idsError);
-        throw new Error(`Error fetching transcription IDs: ${idsError.message}`);
+      if (error) {
+        throw new Error(`Error fetching transcriptions: ${error.message}`);
       }
       
-      console.log('getUserTranscriptions: Found transcription IDs:', transcriptionIds?.length || 0);
-      
-      if (!transcriptionIds || transcriptionIds.length === 0) {
-        return [];
-      }
-      
-      // Now fetch each transcription with its full content
-      const transcriptions = [];
-      
-      for (const { id } of transcriptionIds) {
-        const { data: transcription, error: transcriptionError } = await supabase
-          .from('transcriptions')
-          .select(`
-            *,
-            files (filename, file_path)
-          `)
-          .eq('id', id)
-          .single();
-        
-        if (transcriptionError) {
-          console.error(`getUserTranscriptions: Error fetching transcription ${id}:`, transcriptionError);
-          continue;
-        }
-        
-        if (transcription) {
-          console.log(`getUserTranscriptions: Fetched transcription ${id}:`, 
-            transcription.content ? `Content: ${transcription.content.substring(0, 50)}...` : 'No content');
-          transcriptions.push(transcription);
-        }
-      }
-      
-      console.log('getUserTranscriptions: Fetched all transcriptions:', transcriptions.length);
-      
-      return transcriptions;
+      return data || [];
     } catch (err: any) {
-      console.error('getUserTranscriptions: Caught error:', err);
       setError(err.message);
       return [];
     } finally {
       setIsLoading(false);
     }
-  }, [router, ensureUserProfile]);
+  }, []);
 
-  // Get a single transcription by ID
   const getTranscription = useCallback(async (transcriptionId: string) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log(`useDatabase - Getting transcription with ID: ${transcriptionId}`);
-      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        throw new Error('You must be logged in to view transcriptions');
+        throw new Error('You must be logged in to fetch a transcription');
       }
       
       const userId = session.user.id;
       
-      // Ensure user profile exists
-      await ensureUserProfile(userId);
-      
-      // Using maybeSingle() instead of single() to avoid the error when no row is found
       const { data, error } = await supabase
         .from('transcriptions')
-        .select('*')
+        .select(`
+          *,
+          files (filename, file_path)
+        `)
         .eq('id', transcriptionId)
         .eq('user_id', userId)
-        .eq('deleted', false) // Only get non-deleted transcriptions
         .maybeSingle();
       
       if (error) {
         throw new Error(`Error fetching transcription: ${error.message}`);
       }
       
-      console.log(`useDatabase - Transcription fetch result:`, data ? "Found" : "Not found");
-      
       return data;
     } catch (err: any) {
-      console.error("Error in getTranscription:", err);
       setError(err.message);
-      throw err; // Re-throw to allow caller to handle
+      return null;
     } finally {
       setIsLoading(false);
     }
-  }, [router, ensureUserProfile]);
+  }, []);
 
   const updateTranscription = useCallback(async (transcriptionId: string, updates: Partial<{
     title: string;
@@ -459,7 +412,7 @@ export function useDatabase() {
   }, [router, ensureUserProfile]);
 
   // Analyses
-  const createAnalysis = useCallback(async (transcriptionId: string, title: string, content: string, analysisType: string, metadata?: any) => {
+  const createAnalysis = useCallback(async (transcriptionId: string | null, title: string, content: string, analysisType: string, metadata?: any) => {
     setIsLoading(true);
     setError(null);
     

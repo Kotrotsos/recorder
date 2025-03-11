@@ -7,9 +7,5 @@ export const revalidate = 0;
 export default async function Home() {
   // We'll let the client-side handle authentication
   // This avoids the cookies issue with server components
-  return (
-    <div>
-      <PageContent user={null} />
-    </div>
-  );
+  return <PageContent user={null} />;
 }

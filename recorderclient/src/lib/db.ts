@@ -132,7 +132,6 @@ export async function getUserTranscriptions(userId: string) {
       files (filename, file_path)
     `)
     .eq('user_id', userId)
-    .eq('deleted', false)
     .order('created_at', { ascending: false });
   
   if (error) {
@@ -153,7 +152,6 @@ export async function getTranscription(userId: string, transcriptionId: string) 
     `)
     .eq('id', transcriptionId)
     .eq('user_id', userId)
-    .eq('deleted', false)
     .maybeSingle();
   
   if (error) {
@@ -204,7 +202,7 @@ export async function deleteTranscription(userId: string, transcriptionId: strin
 }
 
 // Analyses
-export async function createAnalysis(userId: string, transcriptionId: string, title: string, content: string, analysisType: string, metadata?: any) {
+export async function createAnalysis(userId: string, transcriptionId: string | null, title: string, content: string, analysisType: string, metadata?: any) {
   const supabase = createClient();
   
   const { data, error } = await supabase

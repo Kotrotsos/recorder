@@ -135,7 +135,7 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col relative bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-700 animated-gradient overflow-y-auto overflow-x-hidden">
+    <div className="min-h-screen flex flex-col relative bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-700 animated-gradient overflow-auto custom-scrollbar">
       {/* Fancy background elements with subtle animations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-pink-500 rounded-full opacity-20 blur-3xl blob1"></div>
@@ -175,10 +175,10 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
       </header>
       
       {/* Main content */}
-      <main className="flex-1 flex flex-col items-center justify-between relative z-10 px-4">
+      <main className="flex-1 flex flex-col items-center justify-between relative z-10 px-2  mx-auto">
         {/* Top section with headline - only show when not authenticated and no results */}
         {!isAuthenticated && !hasProcessedResults && (
-          <div className="text-center pt-16 pb-8 max-w-2xl mx-auto">
+          <div className="text-center pt-16 pb-8  mx-auto w-full">
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Record, Transcribe, and Analyze
             </h1>
@@ -201,7 +201,7 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
         )}
         
         {/* Bottom section with recorder */}
-        <div className="w-full max-w-2xl mx-auto mb-8">
+        <div className="mx-auto mb-8">
           <AudioRecorderWrapper />
         </div>
       </main>
