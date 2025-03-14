@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { usePathname } from 'next/navigation'
 
@@ -45,12 +45,24 @@ const UISettingsContext = createContext<UISettingsContextType>({
 
 export const useUISettings = () => useContext(UISettingsContext)
 
+// Add type guard for gradient functions
+const isValidGradient = (value: any): value is string => {
+  return typeof value === 'string' && value.length > 0
+}
+
+// Add type guard for pathname
+const isValidPathname = (path: string | null): path is string => {
+  return typeof path === 'string'
+}
+
 export function UISettingsProvider({ children }: { children: ReactNode }) {
   const [uiSettings, setUiSettings] = useState<UISettings>(defaultSettings)
   const [savedSettings, setSavedSettings] = useState<UISettings>(defaultSettings)
   const [loading, setLoading] = useState(true)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [lastApplied, setLastApplied] = useState<number>(0)
+  const appliedRef = useRef<string>('') // Add a ref to track the last applied settings
+  const lastAppliedTimeRef = useRef<number>(0) // Add a ref to track the last applied timestamp
   const supabase = createClient()
   const pathname = usePathname()
 
@@ -202,46 +214,55 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
     // Ensure this runs in the client
     if (typeof window === 'undefined') return
 
-    // Update the last applied timestamp to track when styles were most recently applied
-    setLastApplied(Date.now())
-    
     // Wait for next tick to ensure DOM is ready
     setTimeout(() => {
       try {
-        // Select all animated-gradient elements, including those inside the auth-layout
-        const gradientElements = document.querySelectorAll('.animated-gradient')
+        // Update the last applied timestamp to track when styles were most recently applied
+        const now = Date.now()
+        setLastApplied(now)
+        lastAppliedTimeRef.current = now
         
-        // Check if we're on the account page
-        const isAccountPage = pathname && typeof pathname === 'string' && pathname.indexOf('/account') >= 0
-        
-        // Apply background based on mode
+        const gradientElements = document.querySelectorAll('.gradient-background')
+        // Fix the string handling for TypeScript using proper pathname check
+        const pathString = pathname || '';
+        const isAccountPage = typeof pathString === 'string' && pathString.indexOf('/account') >= 0;
+
         if (uiSettings.ui_mode === 'fun') {
           // Apply gradient background
           gradientElements.forEach((el) => {
             const element = el as HTMLElement
-            element.style.background = `linear-gradient(to bottom right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`
+            // Ensure gradient values are treated as strings
+            const from = String(uiSettings.gradient_from || '');
+            const via = String(uiSettings.gradient_via || '');
+            const to = String(uiSettings.gradient_to || '');
             
-            // Ensure animation properties are maintained
-            element.style.backgroundSize = '200% 200%'
-            element.style.animation = 'gradientShift 15s ease infinite'
+            const gradientStyle = `linear-gradient(to bottom right, ${from}, ${via}, ${to})`;
+            element.style.background = gradientStyle;
+            element.style.backgroundSize = '200% 200%';
+            element.style.animation = 'gradientShift 15s ease infinite';
           })
 
-          // Special handling for account page gradient
+          // Special handling for account page
           if (isAccountPage) {
-            // Find the account page container
             const accountContainer = document.querySelector('.min-h-screen.flex.flex-col.relative.overflow-hidden')
             if (accountContainer) {
-              (accountContainer as HTMLElement).style.background = `linear-gradient(to bottom right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`
-              // Force proper animation
-              (accountContainer as HTMLElement).style.backgroundSize = '200% 200%'
-              ;(accountContainer as HTMLElement).style.animation = 'gradientShift 15s ease infinite'
+              const containerElement = accountContainer as HTMLElement;
+              // Ensure gradient values are treated as strings
+              const from = String(uiSettings.gradient_from || '');
+              const via = String(uiSettings.gradient_via || '');
+              const to = String(uiSettings.gradient_to || '');
+              
+              const gradientStyle = `linear-gradient(to bottom right, ${from}, ${via}, ${to})`;
+              containerElement.style.background = gradientStyle;
+              containerElement.style.backgroundSize = '200% 200%';
+              containerElement.style.animation = 'gradientShift 15s ease infinite';
             }
           }
         } else {
           // Apply flat background
           gradientElements.forEach((el) => {
             const element = el as HTMLElement
-            element.style.background = uiSettings.flat_color
+            element.style.background = String(uiSettings.flat_color || '');
             
             // Clear animation properties for flat mode
             element.style.backgroundSize = 'auto'
@@ -253,17 +274,18 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
             // Find the account page container
             const accountContainer = document.querySelector('.min-h-screen.flex.flex-col.relative.overflow-hidden')
             if (accountContainer) {
-              (accountContainer as HTMLElement).style.background = uiSettings.flat_color
+              const containerElement = accountContainer as HTMLElement;
+              containerElement.style.background = String(uiSettings.flat_color || '');
               // Clear animation for flat mode
-              (accountContainer as HTMLElement).style.backgroundSize = 'auto'
-              ;(accountContainer as HTMLElement).style.animation = 'none'
+              containerElement.style.backgroundSize = 'auto';
+              containerElement.style.animation = 'none';
             }
           }
         }
         
         // Apply foreground color to text elements
         document.querySelectorAll('.text-white, .text-white\\70, .text-white\\60').forEach((el) => {
-          (el as HTMLElement).style.color = uiSettings.foreground_color
+          (el as HTMLElement).style.color = String(uiSettings.foreground_color || '');
         })
         
         // Force a reflow to ensure styles are applied
@@ -277,27 +299,29 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
   // Apply settings on initial load and when settings change
   useEffect(() => {
     if (!loading) {
-      applyUISettings()
+      // Create a stringified version of the current settings
+      const settingsKey = JSON.stringify(uiSettings)
+      
+      // Only apply if settings have changed or haven't been applied yet
+      if (settingsKey !== appliedRef.current) {
+        const timeoutId = setTimeout(() => {
+          applyUISettings()
+          appliedRef.current = settingsKey // Update the ref after applying
+        }, 100) // Add a small delay to batch potential rapid changes
+        
+        return () => clearTimeout(timeoutId)
+      }
     }
-  }, [loading, uiSettings.ui_mode, uiSettings.gradient_from, uiSettings.gradient_via, uiSettings.gradient_to, uiSettings.flat_color, uiSettings.foreground_color])
+  }, [loading, uiSettings]) // Use the actual uiSettings object, but control application with the ref
 
   // Apply settings when the pathname changes, focusing on the account page
   useEffect(() => {
-    // If we have a pathname and we're not loading
     if (pathname && !loading) {
-      // Apply settings with a small delay to ensure the DOM is ready
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         applyUISettings()
-        
-        // For account page, apply a second time after a slightly longer delay
-        // to ensure AuthLayout has fully rendered
-        const isAccountPage = pathname && typeof pathname === 'string' && pathname.indexOf('/account') >= 0
-        if (isAccountPage) {
-          setTimeout(() => {
-            applyUISettings()
-          }, 300)
-        }
-      }, 50)
+      }, 100)
+      
+      return () => clearTimeout(timeoutId)
     }
   }, [pathname, loading])
 
@@ -311,7 +335,7 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
     // Set up a check every 500ms for the first 3 seconds
     const intervalId = setInterval(() => {
       // Only reapply if it's been more than 300ms since the last application
-      if (Date.now() - lastApplied > 300) {
+      if (Date.now() - lastAppliedTimeRef.current > 300) {
         applyUISettings()
       }
     }, 500)
@@ -325,7 +349,7 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
       clearInterval(intervalId)
       clearTimeout(timeoutId)
     }
-  }, [pathname, loading, lastApplied])
+  }, [pathname, loading])
 
   return (
     <UISettingsContext.Provider value={{ 

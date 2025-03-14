@@ -14,6 +14,7 @@ import { useUISettings } from '@/contexts/ui-settings-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RefreshCw } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import React from 'react'
 
 // Default UI settings for reset functionality
 const defaultUISettings = {
@@ -39,6 +40,9 @@ export default function UISettings() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   
+  // Local state for UI mode to prevent infinite loops
+  const [localUIMode, setLocalUIMode] = useState<'fun' | 'flat'>(uiSettings.ui_mode)
+  
   // Color picker states
   const [activeColorPicker, setActiveColorPicker] = useState<string | null>(null)
   
@@ -46,6 +50,14 @@ export default function UISettings() {
   const [gradientDialogOpen, setGradientDialogOpen] = useState(false)
   
   const supabase = createClient()
+
+  // Sync local UI mode with context
+  useEffect(() => {
+    // Only update local state if it's different from context to prevent unnecessary re-renders
+    if (localUIMode !== uiSettings.ui_mode) {
+      setLocalUIMode(uiSettings.ui_mode)
+    }
+  }, [uiSettings.ui_mode, localUIMode])
 
   useEffect(() => {
     const getUser = async () => {
@@ -93,7 +105,9 @@ export default function UISettings() {
 
   // Handle UI mode change
   const handleUIModeChange = (isChecked: boolean) => {
-    updateUISettings({ ui_mode: isChecked ? 'fun' : 'flat' })
+    const newMode = isChecked ? 'fun' : 'flat'
+    setLocalUIMode(newMode) // Update local state first
+    updateUISettings({ ui_mode: newMode }) // Then update context
   }
 
   // Handle color change
@@ -149,6 +163,17 @@ export default function UISettings() {
     }
   }
 
+  // Memoize preview styles to prevent unnecessary re-renders
+  const gradientPreviewStyle = React.useMemo(() => generateGradientPreview(), [
+    uiSettings.gradient_from,
+    uiSettings.gradient_via,
+    uiSettings.gradient_to
+  ])
+  
+  const flatPreviewStyle = React.useMemo(() => generateFlatPreview(), [
+    uiSettings.flat_color
+  ])
+
   if (loading) {
     return <div className="flex justify-center items-center min-h-[400px] text-white">Loading...</div>
   }
@@ -188,7 +213,7 @@ export default function UISettings() {
                   <Label htmlFor="ui-mode" className="text-white/60">Flat</Label>
                   <Switch 
                     id="ui-mode" 
-                    checked={uiSettings.ui_mode === 'fun'}
+                    checked={localUIMode === 'fun'}
                     onCheckedChange={handleUIModeChange}
                   />
                   <Label htmlFor="ui-mode" className="text-white">Fun</Label>
@@ -197,7 +222,7 @@ export default function UISettings() {
               
               {/* Color Preview */}
               <div className="h-16 rounded-md overflow-hidden">
-                <div className="h-full" style={uiSettings.ui_mode === 'fun' ? generateGradientPreview() : generateFlatPreview()}></div>
+                <div className="h-full" style={localUIMode === 'fun' ? gradientPreviewStyle : flatPreviewStyle}></div>
               </div>
             </div>
             
@@ -205,7 +230,7 @@ export default function UISettings() {
             <div>
               <h3 className="text-lg font-medium text-white mb-4">Customize Colors</h3>
               <div className="space-y-4">
-                {uiSettings.ui_mode === 'fun' ? (
+                {localUIMode === 'fun' ? (
                   <div className="space-y-4">
                     <Dialog open={gradientDialogOpen} onOpenChange={setGradientDialogOpen}>
                       <DialogTrigger asChild>
@@ -276,7 +301,7 @@ export default function UISettings() {
                           </div>
                           
                           <div className="h-16 rounded-md overflow-hidden">
-                            <div className="h-full" style={generateGradientPreview()}></div>
+                            <div className="h-full" style={gradientPreviewStyle}></div>
                           </div>
                         </div>
                       </DialogContent>
