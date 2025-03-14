@@ -81,16 +81,6 @@ export default function UserProfile() {
     alert('Account deletion functionality would be implemented here')
   }
 
-  const handleDeactivateAccount = () => {
-    // To be implemented
-    alert('Account deactivation functionality would be implemented here')
-  }
-
-  const handleConvertToBusiness = () => {
-    // To be implemented
-    alert('Convert to business account functionality would be implemented here')
-  }
-
   if (loading) {
     return <div className="flex justify-center items-center min-h-[400px] text-white">Loading...</div>
   }
@@ -170,46 +160,9 @@ export default function UserProfile() {
           </div>
         </div>
         
-        {/* Business Account Section */}
+        {/* Account Deletion Section */}
         <div>
-          <h3 className="text-lg font-medium text-white mb-4">Convert to a business account</h3>
-          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <p className="text-sm text-white/80 mb-4">
-              With a business account you'll have access to tools like ads and analytics to grow your business on rec.ai
-            </p>
-            <Button 
-              type="button" 
-              onClick={handleConvertToBusiness}
-              className="bg-white/20 hover:bg-white/30 text-white"
-            >
-              Convert account
-            </Button>
-          </div>
-        </div>
-        
-        {/* Deactivation and Deletion Section */}
-        <div>
-          <h3 className="text-lg font-medium text-white mb-4">Deactivation and deletion</h3>
-          
-          {/* Deactivate Account */}
-          <div className="space-y-2 mb-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <h4 className="text-white font-medium">Deactivate account</h4>
-                <p className="text-sm text-white/70">
-                  Temporarily hide your profile, recordings and data
-                </p>
-              </div>
-              <Button 
-                type="button" 
-                onClick={handleDeactivateAccount}
-                variant="outline"
-                className="bg-white/10 hover:bg-white/20 text-white border-white/20"
-              >
-                Deactivate account
-              </Button>
-            </div>
-          </div>
+          <h3 className="text-lg font-medium text-white mb-4">Account deletion</h3>
           
           {/* Delete Account */}
           <div className="space-y-2">

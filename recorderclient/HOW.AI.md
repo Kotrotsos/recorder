@@ -2306,3 +2306,156 @@ The implementation uses:
    - Card-based layout with consistent spacing
    - Backdrop blur and semi-transparent backgrounds for a modern look
    - Clear visual hierarchy with section headings
+
+## User Profile Component
+
+### March 16, 2024 - 14:00 CET
+
+The User Profile component in the account management page has been streamlined by removing the "Convert to a business account" section. This change was made to focus the user interface on implemented features, removing UI elements that point to functionality not yet available.
+
+### Removed Elements
+
+1. **Business Account Section**:
+   - A section titled "Convert to a business account" has been removed
+   - This section contained explanatory text about business account benefits
+   - The section included a button labeled "Convert account"
+   - The corresponding `handleConvertToBusiness` function has also been removed
+
+### Implementation Details
+
+The removal was executed by:
+1. Deleting the "Business Account Section" div and all its contents
+2. Removing the `handleConvertToBusiness` function declaration
+3. Maintaining the component's overall structure and other functionality
+
+### User Experience
+
+This change improves the user experience by:
+1. Focusing the UI on currently available features
+2. Reducing confusion by not showing buttons for unimplemented functionality
+3. Creating a cleaner, more straightforward account management interface
+4. Avoiding the "coming soon" pattern in favor of only showing implemented features
+
+The business account conversion feature will be reintroduced once the functionality is fully implemented in a future update.
+
+### March 16, 2024 - 15:00 CET
+
+Further streamlining of the User Profile component has been implemented by removing the "Deactivate account" feature, leaving only the permanent "Delete account" option.
+
+### Removed Elements
+
+1. **Deactivate Account Section**:
+   - The section for temporarily deactivating an account has been removed
+   - This included explanatory text about temporarily hiding profiles and data
+   - The section included a button labeled "Deactivate account"
+   - The corresponding `handleDeactivateAccount` function has also been removed
+
+### Implementation Details
+
+The removal was executed by:
+1. Deleting the "Deactivate Account" div and all its contents
+2. Removing the `handleDeactivateAccount` function declaration
+3. Renaming the section header from "Deactivation and deletion" to "Account deletion"
+4. Preserving the "Delete account" functionality
+
+### User Experience
+
+This change improves the user experience by:
+1. Simplifying account management options to just one clear action
+2. Eliminating potentially confusing distinction between deactivation and deletion
+3. Focusing on the most critical account management action (permanent deletion)
+4. Creating a more straightforward, less cluttered interface
+5. Removing another "coming soon" feature that wasn't yet fully implemented
+
+The account deactivation feature may be reintroduced in the future when fully implemented, with clear distinction from permanent deletion.
+
+## Page Loading and Style Application
+
+The application uses a loading system to ensure that all styles and components are properly loaded before rendering content. This is particularly important for handling page transitions where styles might not be immediately applied.
+
+### Components
+
+#### LoadingProvider
+The `LoadingProvider` (in `src/contexts/loading-context.tsx`) manages the loading state across the application. It watches for route changes and UI setting changes, and ensures that content is only shown when everything is properly loaded.
+
+Key features:
+- Tracks loading state in a React context
+- Monitors route changes by patching the Next.js router
+- Synchronizes with the UI settings loading state
+- Provides delays to ensure styles are applied before showing content
+- Implements a safety timeout to prevent infinite loading states
+- Provides extensive error handling to ensure loading always completes
+
+```tsx
+const LoadingProvider = ({ children }: { children: ReactNode }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  // Monitor route changes and UI settings loading
+  // ...
+  
+  // Safety timeout to prevent infinite loading
+  useEffect(() => {
+    const safetyTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn('Safety timeout triggered to prevent infinite loading');
+        setIsLoading(false);
+      }
+    }, 5000); // 5 seconds maximum loading time
+    
+    return () => clearTimeout(safetyTimeout);
+  }, [isLoading]);
+  
+  return (
+    <LoadingContext.Provider value={{ isLoading, setIsLoading }}>
+      {children}
+    </LoadingContext.Provider>
+  );
+}
+```
+
+#### LoadingOverlay
+The `LoadingOverlay` (in `src/components/ui/loading-overlay.tsx`) wraps content and displays a loading spinner when the application is in a loading state.
+
+Key features:
+- Shows a fullscreen overlay with a spinner during loading
+- Uses a dark neutral gradient background (dark blue to deep navy)
+- Implements smooth transitions for appearance/disappearance
+- Hides content until it's ready to be displayed
+- Includes backdrop blur effect for a modern look
+
+```tsx
+const LoadingOverlay = ({ children, fullHeight = false }) => {
+  const { isLoading } = useLoading();
+  
+  return (
+    <div className={`relative ${fullHeight ? 'h-full' : ''}`}>
+      {isLoading && (
+        <div 
+          className="absolute inset-0 flex items-center justify-center z-50"
+          style={{ 
+            background: 'linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+            backdropFilter: 'blur(8px)'
+            // ...
+          }}>
+          <LoadingSpinner size="large" className="text-white" />
+          {/* ... */}
+        </div>
+      )}
+      
+      <div style={{ opacity: isLoading ? 0 : 1, visibility: isLoading ? 'hidden' : 'visible' }}>
+        {children}
+      </div>
+    </div>
+  );
+};
+```
+
+### How It Works
+
+1. When navigating to a new page, `LoadingProvider` sets `isLoading` to true
+2. The `LoadingOverlay` displays a gradient background with spinner and hides the page content
+3. After navigation, the UI settings are re-applied to ensure styles are correctly updated
+4. A short delay ensures all DOM updates and style applications are complete
+5. `isLoading` is set to false, revealing the fully styled content
+6. If loading takes too long (over 5 seconds), a safety timeout automatically shows content
+
+This system helps prevent the UI flashing with incorrect styles during navigation and provides visual feedback to users during loading periods. The safety mechanisms ensure users are never stuck on a loading screen, even if there are issues with style application.

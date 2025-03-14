@@ -87,7 +87,10 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('Error fetching UI settings:', error)
       } finally {
-        setLoading(false)
+        // Add a small delay before finishing loading to ensure styles get applied
+        setTimeout(() => {
+          setLoading(false)
+        }, 100)
       }
     }
 
@@ -190,23 +193,39 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
 
   // Function to apply UI settings to the page
   const applyUISettings = () => {
-    // Apply background based on mode
-    if (uiSettings.ui_mode === 'fun') {
-      // Apply gradient background
-      document.querySelectorAll('.animated-gradient').forEach((el) => {
-        (el as HTMLElement).style.background = `linear-gradient(to bottom right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`
-      })
-    } else {
-      // Apply flat background
-      document.querySelectorAll('.animated-gradient').forEach((el) => {
-        (el as HTMLElement).style.background = uiSettings.flat_color
-      })
-    }
+    // Don't apply if we're still loading
+    if (loading) return
     
-    // Apply foreground color to text elements
-    document.querySelectorAll('.text-white, .text-white\\70, .text-white\\60').forEach((el) => {
-      (el as HTMLElement).style.color = uiSettings.foreground_color
-    })
+    // Ensure this runs in the client
+    if (typeof window === 'undefined') return
+    
+    // Wait for next tick to ensure DOM is ready
+    setTimeout(() => {
+      try {
+        // Apply background based on mode
+        if (uiSettings.ui_mode === 'fun') {
+          // Apply gradient background
+          document.querySelectorAll('.animated-gradient').forEach((el) => {
+            (el as HTMLElement).style.background = `linear-gradient(to bottom right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`
+          })
+        } else {
+          // Apply flat background
+          document.querySelectorAll('.animated-gradient').forEach((el) => {
+            (el as HTMLElement).style.background = uiSettings.flat_color
+          })
+        }
+        
+        // Apply foreground color to text elements
+        document.querySelectorAll('.text-white, .text-white\\70, .text-white\\60').forEach((el) => {
+          (el as HTMLElement).style.color = uiSettings.foreground_color
+        })
+        
+        // Force a reflow to ensure styles are applied
+        document.body.offsetHeight
+      } catch (error) {
+        console.error('Error applying UI settings:', error)
+      }
+    }, 0)
   }
   
   // Apply settings on initial load and when settings change

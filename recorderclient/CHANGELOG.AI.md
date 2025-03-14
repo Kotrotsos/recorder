@@ -890,3 +890,90 @@ Files changed:
 - src/components/auth/user-profile.tsx
 - src/components/auth/webhook-settings.tsx
 - src/components/auth/ui-settings.tsx
+
+## March 16, 2024 - 14:00 CET
+
+### Removed
+- Removed the "Convert to a business account" section from the user profile component
+- Removed the corresponding handleConvertToBusiness function
+- This feature was removed as it is not yet implemented and will be added back when ready
+
+### Files Changed
+- `src/components/auth/user-profile.tsx` - Removed business account conversion section
+
+## March 16, 2024 - 15:00 CET
+
+### Removed
+- Removed the "Deactivate account" feature from the user profile component
+- Removed the corresponding handleDeactivateAccount function
+- Changed the section title from "Deactivation and deletion" to "Account deletion"
+- Simplified the account management interface by focusing on permanent account deletion only
+
+### Files Changed
+- `src/components/auth/user-profile.tsx` - Removed deactivate account section
+
+## 2025-03-14 22:01:28 - Added Loading Indicator and Page Transition System
+
+### Changes
+- Added a new LoadingProvider context to manage loading states across the application
+- Created a LoadingSpinner component for visual feedback during loading
+- Created a LoadingOverlay component that wraps content and displays a loading indicator
+- Updated the UISettingsProvider to better handle style application during page transitions
+- Modified the root layout to incorporate the loading system into the application
+
+### Files Changed
+- Created `src/contexts/loading-context.tsx`
+- Created `src/components/ui/loading-spinner.tsx`
+- Created `src/components/ui/loading-overlay.tsx`
+- Modified `src/app/layout.tsx`
+- Modified `src/contexts/ui-settings-context.tsx`
+
+### Reason for Changes
+This change addresses an issue where styling wasn't being properly applied when navigating between pages. The new loading system ensures that components are only rendered after all styles have been properly loaded and applied. The loading indicator provides visual feedback to users during this process, improving the overall user experience.
+
+The system works by creating a loading context that tracks the loading state, and a loading overlay component that only renders the page content once everything is ready. The UI settings context has been enhanced to better handle style application during page transitions.
+
+## 2025-03-14 22:05:34 - Enhanced Loading System and User Experience
+
+### Fixed
+- Fixed issue where the loading spinner would sometimes keep spinning indefinitely
+- Added a safety timeout (5 seconds) to prevent infinite loading states
+- Improved error handling in the loading context to ensure loading always completes
+- Enhanced route change detection to better handle navigation events
+
+### Enhanced
+- Updated the loading overlay with a beautiful dark neutral gradient background
+- Changed background from plain color to gradient (dark blue to deep navy)
+- Improved visibility of the loading spinner against the new background
+- Added blur effect to the loading overlay for a more modern look
+- Updated text color for better readability on the gradient background
+
+### Files Changed
+- Modified `src/contexts/loading-context.tsx`
+- Modified `src/components/ui/loading-overlay.tsx`
+- Modified `src/components/ui/loading-spinner.tsx`
+
+### Reason for Changes
+These changes address a usability issue where the loading spinner would sometimes get stuck in an infinite state, preventing users from accessing content. The safety timeout ensures users will always see content even if there's an issue with the loading process. Additionally, the visual enhancements to the loading overlay provide a more polished and professional appearance during loading states, improving the overall user experience.
+
+## 2025-03-14 22:13:24 - Fixed Loading Overlay Hydration Error
+
+### Fixed
+- Fixed a critical React hydration error in the LoadingOverlay component
+- Replaced mixed Tailwind classes and inline styles with consistent style objects
+- Added client-side detection to conditionally apply backdrop blur effects
+- Used React CSSProperties typing for proper TypeScript compliance
+- Implemented a solution that ensures consistent rendering between server and client
+- Removed all styling differences that were causing the hydration mismatch
+
+### Files Changed
+- Modified `src/components/ui/loading-overlay.tsx`
+
+### Reason for Changes
+This fix addresses a React hydration error that was occurring because the server and client were rendering different HTML for the loading overlay. The error appeared as:
+
+```
+Hydration failed because the server rendered HTML didn't match the client.
+```
+
+The issue was caused by mixing Tailwind classes and inline styles that were being processed differently between server and client rendering. By moving all styling to inline style objects with proper typing and adding client-side detection for browser-specific features like blur effects, we ensure that the HTML generated on both server and client is consistent, eliminating the hydration error.

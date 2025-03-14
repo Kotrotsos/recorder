@@ -4,6 +4,8 @@ import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Toaster } from 'sonner';
 import { UISettingsProvider } from '@/contexts/ui-settings-context'
+import { LoadingProvider } from '@/contexts/loading-context'
+import { LoadingOverlay } from '@/components/ui/loading-overlay'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,9 +34,13 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <UISettingsProvider>
-          {children}
-          <Toaster position="top-center" richColors />
-          <SpeedInsights />
+          <LoadingProvider>
+            <LoadingOverlay fullHeight>
+              {children}
+            </LoadingOverlay>
+            <Toaster position="top-center" richColors />
+            <SpeedInsights />
+          </LoadingProvider>
         </UISettingsProvider>
       </body>
     </html>
