@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,8 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectPath = searchParams.get('redirect') || '/'
   const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -33,7 +35,8 @@ export default function LoginForm() {
         return
       }
 
-      router.push('/')
+      // Redirect to the specified path or home page
+      router.push(redirectPath)
       router.refresh()
     } catch (error) {
       console.error('Error logging in:', error)
@@ -49,6 +52,11 @@ export default function LoginForm() {
         <CardTitle className="text-2xl font-bold text-white">Login</CardTitle>
         <CardDescription className="text-white/70">
           Enter your email and password to access your account
+          {redirectPath !== '/' && (
+            <span className="block mt-1 text-amber-300">
+              You'll be redirected back after login
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -92,7 +100,10 @@ export default function LoginForm() {
       <CardFooter className="flex flex-col space-y-2 border-t border-white/10 pt-4">
         <div className="text-sm text-center text-white/70">
           Don&apos;t have an account?{' '}
-          <Link href="/register" className="text-white hover:text-white/80 underline underline-offset-4">
+          <Link 
+            href={`/register${redirectPath !== '/' ? `?redirect=${encodeURIComponent(redirectPath)}` : ''}`} 
+            className="text-white hover:text-white/80 underline underline-offset-4"
+          >
             Register
           </Link>
         </div>

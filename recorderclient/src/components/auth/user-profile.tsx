@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import LogoutButton from './logout-button'
 import { User } from '@supabase/supabase-js'
+import SupporterBadge from '@/components/SupporterBadge'
+import { isLifetimeSupporter } from '@/utils/subscription'
 
 export default function UserProfile() {
   const [user, setUser] = useState<User | null>(null)
@@ -16,6 +18,7 @@ export default function UserProfile() {
   const [updating, setUpdating] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isSupporter, setIsSupporter] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -26,6 +29,10 @@ export default function UserProfile() {
         setUser(user)
         if (user) {
           setEmail(user.email || '')
+          
+          // Check if the user is a lifetime supporter
+          const supporter = await isLifetimeSupporter()
+          setIsSupporter(supporter)
         }
       } catch (error) {
         console.error('Error getting user:', error)
@@ -73,7 +80,10 @@ export default function UserProfile() {
   return (
     <Card className="w-full backdrop-blur-sm bg-white/5 border-0 shadow-lg">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-white">Your Profile</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-2xl font-bold text-white">Your Profile</CardTitle>
+          {isSupporter && <SupporterBadge className="ml-2" />}
+        </div>
         <CardDescription className="text-white/70">
           Manage your account settings
         </CardDescription>
@@ -94,6 +104,16 @@ export default function UserProfile() {
               Changing your email will require confirmation from the new address.
             </p>
           </div>
+          
+          {isSupporter && (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+              <h3 className="text-amber-400 font-medium mb-1">Lifetime Supporter</h3>
+              <p className="text-xs text-white/80">
+                Thank you for supporting this project! You have lifetime access to all premium features.
+              </p>
+            </div>
+          )}
+          
           {error && (
             <div className="text-sm font-medium text-red-300">{error}</div>
           )}

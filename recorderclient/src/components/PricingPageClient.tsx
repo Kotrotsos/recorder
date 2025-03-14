@@ -1,10 +1,73 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CheckIcon } from './icons/CheckIcon';
+import StripeCheckout from './StripeCheckout';
+import SupporterBadge from './SupporterBadge';
+import { isLifetimeSupporter } from '@/utils/subscription';
+import { useRouter } from 'next/navigation';
+import useAuth from '@/hooks/useAuth';
+import { createClient } from '@/lib/supabase';
 
 export default function PricingPageClient() {
+  console.log("PricingPageClient - Component rendering");
+  
+  // Use the same useAuth hook that PageContent uses
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const [user, setUser] = useState<any>(null);
+  const [isSupporter, setIsSupporter] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  
+  const router = useRouter();
+  const supabase = createClient();
+
+  // Check user details and supporter status when authenticated
+  useEffect(() => {
+    console.log("PricingPageClient - Auth state changed:", isAuthenticated ? "Authenticated" : "Not authenticated");
+    
+    const fetchUserAndSupporterStatus = async () => {
+      if (isAuthenticated) {
+        try {
+          // Get the user details
+          const { data: { user: userData }, error } = await supabase.auth.getUser();
+          
+          if (error) {
+            console.error('Error getting user details:', error);
+            setAuthError(error.message);
+            return;
+          }
+          
+          if (userData) {
+            console.log("PricingPageClient - User details fetched:", userData.id);
+            setUser(userData);
+            
+            // Check supporter status
+            try {
+              const supporter = await isLifetimeSupporter();
+              console.log("PricingPageClient - Supporter status:", supporter);
+              setIsSupporter(supporter);
+            } catch (error) {
+              console.error('Error checking supporter status:', error);
+            }
+          }
+        } catch (error) {
+          console.error('Error in fetchUserAndSupporterStatus:', error);
+          setAuthError(`Error: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      } else {
+        // Not authenticated, reset user and supporter status
+        setUser(null);
+        setIsSupporter(false);
+      }
+    };
+    
+    // Only fetch user details if we're authenticated and not still loading
+    if (!authLoading) {
+      fetchUserAndSupporterStatus();
+    }
+  }, [isAuthenticated, authLoading, supabase]);
+
   // Add a style tag for the animation
   useEffect(() => {
     // Create a style element
@@ -88,6 +151,56 @@ export default function PricingPageClient() {
     };
   }, []);
 
+  // Function to render the supporter button based on authentication status
+  const renderSupporterButton = () => {
+    console.log("renderSupporterButton - Auth state:", isAuthenticated ? "Authenticated" : "Not authenticated");
+    console.log("renderSupporterButton - User:", user ? `User ID: ${user?.id}` : "No user");
+    console.log("renderSupporterButton - Is Supporter:", isSupporter ? "Yes" : "No");
+    
+    if (authError) {
+      return (
+        <div className="block w-full text-center py-3 px-4 bg-red-500/70 text-white font-medium rounded-xl">
+          Authentication Error: Please reload the page
+        </div>
+      );
+    }
+    
+    if (authLoading) {
+      return (
+        <button 
+          disabled
+          className="block w-full py-3 px-4 bg-gradient-to-r from-amber-500/70 to-yellow-500/70 text-white font-medium rounded-xl transition-colors"
+        >
+          Loading...
+        </button>
+      );
+    }
+    
+    if (!isAuthenticated) {
+      return (
+        <Link href="/login?redirect=/pricing" className="block w-full text-center py-3 px-4 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-medium rounded-xl transition-colors">
+          Login to Become a Supporter
+        </Link>
+      );
+    }
+    
+    if (isSupporter) {
+      return (
+        <div className="block w-full text-center py-3 px-4 bg-gradient-to-r from-amber-600 to-yellow-600 text-white font-medium rounded-xl">
+          You are a Lifetime Supporter ✓
+        </div>
+      );
+    }
+    
+    return (
+      <StripeCheckout 
+        priceId={process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_LIFETIME || 'price_1MRY6AG1OX3gPFMJLA0yDB3bv'}
+        buttonText="Become a Supporter"
+        buttonClassName="block w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-medium rounded-xl transition-colors"
+      />
+    );
+  };
+
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-700 animated-gradient">
       {/* Fancy background elements with subtle animations */}
@@ -109,20 +222,54 @@ export default function PricingPageClient() {
           <ul className="flex space-x-6 text-sm font-medium text-white/80">
             <li><Link href="/about" className="hover:text-white transition-colors">About</Link></li>
             <li><Link href="/pricing" className="text-white transition-colors">Pricing</Link></li>
-            <li>
-              <Link 
-                href="/login" 
-                className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
-              >
-                Login
-              </Link>
-            </li>
+            {authError ? (
+              <li>
+                <div className="px-4 py-2 bg-red-500/20 rounded-full text-white">
+                  Auth Error
+                </div>
+              </li>
+            ) : authLoading ? (
+              <li>
+                <div className="px-4 py-2 bg-white/10 rounded-full">
+                  <div className="w-12 h-4 bg-white/20 animate-pulse rounded-full"></div>
+                </div>
+              </li>
+            ) : isAuthenticated ? (
+              <li className="flex items-center">
+                {isSupporter && <SupporterBadge className="mr-2" showText={false} />}
+                <Link 
+                  href="/account" 
+                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                >
+                  Account
+                </Link>
+              </li>
+            ) : (
+              <li>
+                <Link 
+                  href="/login" 
+                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                >
+                  Login
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
       </header>
       
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 py-12">
+        {/* Debug info for development - remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="fixed top-20 right-4 z-50 bg-black/80 text-white p-2 rounded text-xs max-w-xs">
+            <div><strong>Auth Status:</strong> {authLoading ? 'Loading...' : isAuthenticated ? 'Logged in' : 'Not logged in'}</div>
+            {user && <div><strong>User ID:</strong> {user.id.substring(0, 8)}...</div>}
+            <div><strong>Is Supporter:</strong> {isSupporter ? 'Yes' : 'No'}</div>
+            {authError && <div className="text-red-400"><strong>Error:</strong> {authError}</div>}
+          </div>
+        )}
+        
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
             Simple, Transparent Pricing
@@ -243,12 +390,7 @@ export default function PricingPageClient() {
               </div>
               
               <div className="text-center">
-                <Link 
-                  href="/register?plan=lifetime" 
-                  className="block w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-medium rounded-xl transition-colors"
-                >
-                  Become a Supporter
-                </Link>
+                {renderSupporterButton()}
                 <p className="text-white/60 text-sm mt-4">
                   Support indie development and get early access to all future features
                 </p>

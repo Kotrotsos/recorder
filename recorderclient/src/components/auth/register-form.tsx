@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,7 +19,9 @@ export default function RegisterForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
- 
+  
+  const searchParams = useSearchParams()
+  const redirectPath = searchParams.get('redirect') || '/'
   const supabase = createClient()
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -53,7 +56,7 @@ export default function RegisterForm() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectPath)}`,
           data: {
             name: name,
           },
@@ -65,7 +68,7 @@ export default function RegisterForm() {
         return
       }
 
-      setMessage('Check your email for the confirmation link')
+      setMessage('Check your email for the confirmation link. You will be redirected to your desired page after confirming.')
     } catch (error) {
       console.error('Error registering:', error)
       setError('An unexpected error occurred')
@@ -80,6 +83,11 @@ export default function RegisterForm() {
         <CardTitle className="text-2xl font-bold text-white">Register</CardTitle>
         <CardDescription className="text-white/70">
           Create a new account to get started
+          {redirectPath !== '/' && (
+            <span className="block mt-1 text-amber-300">
+              You'll be redirected to your desired page after registration
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -169,7 +177,10 @@ export default function RegisterForm() {
       <CardFooter className="flex flex-col space-y-2 border-t border-white/10 pt-4">
         <div className="text-sm text-center text-white/70">
           Already have an account?{' '}
-          <Link href="/login" className="text-white hover:text-white/80 underline underline-offset-4">
+          <Link 
+            href={`/login${redirectPath !== '/' ? `?redirect=${encodeURIComponent(redirectPath)}` : ''}`}
+            className="text-white hover:text-white/80 underline underline-offset-4"
+          >
             Login
           </Link>
         </div>
