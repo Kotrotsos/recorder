@@ -797,3 +797,18 @@ This update adds persistence to the translation functionality. When a user trans
 
 ### Files Changed
 - `src/components/audio/audio-recorder.tsx`
+
+## March 14, 2025 - 17:59 CET
+
+### Removed
+- Removed the translate dropdown and button from the audio recorder component
+- Removed the translate dropdown and button from the card modal dialog
+- Simplified the UI by removing translation functionality from both locations
+
+## March 14, 2025 - 18:04 CET
+
+### Added
+- Added a copy button to the transcript area in the audio recorder
+- Implemented functionality to copy transcript content to clipboard
+- Added success/error toast notifications for the copy operation
+- Positioned the button next to the "Transcript" heading for easy access

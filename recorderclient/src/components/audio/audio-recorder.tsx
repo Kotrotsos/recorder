@@ -2166,7 +2166,31 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                   
                   {/* Display transcript in the recorder card */}
                   <div className="mt-4 p-4 pb-0 bg-white/10 rounded-lg border border-white/20 text-sm text-white/90">
-                    <h4 className="font-medium text-white mb-2">Transcript</h4>
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium text-white">Transcript</h4>
+                      {!aiProcessing && getTranscriptContent(lastTranscriptionNumericId || 0) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs bg-white/10 hover:bg-white/20 text-white/70 hover:text-white"
+                          onClick={() => {
+                            const transcriptContent = getTranscriptContent(lastTranscriptionNumericId || 0);
+                            if (transcriptContent) {
+                              navigator.clipboard.writeText(transcriptContent)
+                                .then(() => {
+                                  toast.success("Transcript copied to clipboard");
+                                })
+                                .catch(err => {
+                                  console.error('Failed to copy text: ', err);
+                                  toast.error("Failed to copy transcript");
+                                });
+                            }
+                          }}
+                        >
+                          <Copy className="h-3.5 w-3.5 mr-1" /> Copy
+                        </Button>
+                      )}
+                    </div>
                     <div className="whitespace-pre-line max-h-60 overflow-y-auto">
                       {aiProcessing ? (
                         <div className="flex items-center justify-center py-4">
@@ -2187,35 +2211,9 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                       })}</span>
                       
                       <div className="flex items-center space-x-3">
-                        <Select defaultValue="english">
-                          <SelectTrigger className="h-6 w-24 text-xs bg-white/10 border-white/20 [&_svg]:text-white">
-                            <SelectValue placeholder="English" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="english">English</SelectItem>
-                            <SelectItem value="dutch">Dutch</SelectItem>
-                            <SelectItem value="german">German</SelectItem>
-                            <SelectItem value="french">French</SelectItem>
-                            <SelectItem value="spanish">Spanish</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <span>{selectedCard?.date}</span>
                         
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="h-6 text-xs bg-white/70 text-gray-800 hover:bg-white/90 border-white/20"
-                          onClick={() => {
-                            console.log("Translate button clicked", { 
-                              selectedCard: selectedCard?.id,
-                              content: selectedCard?.content?.substring(0, 50) + "...", 
-                              language: selectedLanguage
-                            });
-                            handleTranslate(selectedCard?.content || "", selectedLanguage, selectedCard?.title);
-                          }}
-                          disabled={isTranslating || selectedLanguage === "english"}
-                        >
-                          {isTranslating ? "Translating..." : "Translate"}
-                        </Button>
+                        {/* Removing the translate dropdown and button */}
                       </div>
                     </div>
                   </div>
@@ -2485,39 +2483,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                   )}
                 </Button>
                 
-                <Select 
-                  defaultValue="english" 
-                  value={selectedLanguage}
-                  onValueChange={(value) => setSelectedLanguage(value)}
-                >
-                  <SelectTrigger className="h-6 w-24 text-xs bg-white/10 border-white/20 [&_svg]:text-white">
-                    <SelectValue placeholder="English" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="english">English</SelectItem>
-                    <SelectItem value="dutch">Dutch</SelectItem>
-                    <SelectItem value="german">German</SelectItem>
-                    <SelectItem value="french">French</SelectItem>
-                    <SelectItem value="spanish">Spanish</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-6 text-xs bg-white/70 text-gray-800 hover:bg-white/90 border-white/20"
-                  onClick={() => {
-                    console.log("Translate button clicked", { 
-                      selectedCard: selectedCard?.id,
-                      content: selectedCard?.content?.substring(0, 50) + "...", 
-                      language: selectedLanguage
-                    });
-                    handleTranslate(selectedCard?.content || "", selectedLanguage, selectedCard?.title);
-                  }}
-                  disabled={isTranslating || selectedLanguage === "english"}
-                >
-                  {isTranslating ? "Translating..." : "Translate"}
-                </Button>
+                {/* Removing the translate dropdown and button */}
               </div>
             </div>
           )}

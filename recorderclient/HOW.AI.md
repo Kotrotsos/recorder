@@ -2,62 +2,51 @@
 
 This file documents complex parts of the codebase and explains how they work.
 
+## Transcript Copy Functionality
+
+### March 14, 2025
+
+A copy button has been added to the transcript area in the audio recorder component. This button allows users to easily copy the transcript content to their clipboard with a single click.
+
+### Implementation Details
+
+1. **Button Placement**: The copy button is positioned in the header of the transcript area, next to the "Transcript" heading, creating a clean and intuitive UI.
+
+2. **Conditional Rendering**: The button only appears when:
+   - The transcript content exists
+   - The AI is not currently processing (not in the "Generating transcript..." state)
+
+3. **Copy Mechanism**: The button uses the browser's Clipboard API to copy the transcript text:
+   ```javascript
+   navigator.clipboard.writeText(transcriptContent)
+   ```
+
+4. **User Feedback**: The component provides feedback to the user through toast notifications:
+   - Success message when the copy operation succeeds
+   - Error message if the copy operation fails
+
+5. **Styling**: The button uses a ghost variant with subtle hover effects that match the overall design language of the application.
+
+### User Experience
+
+From a user perspective, the copy functionality works as follows:
+1. User records audio or uploads a file
+2. After transcription is complete, a "Copy" button appears next to the "Transcript" heading
+3. User clicks the button to copy the entire transcript to their clipboard
+4. A toast notification confirms the successful copy operation
+5. User can then paste the transcript wherever needed
+
+This feature improves the user experience by eliminating the need to manually select and copy the transcript text, especially for longer transcripts.
+
 ## Translation and Action UI Elements
 
 ### March 14, 2025 (Updated)
 
-The transcript cards in the audio recorder component now feature a simplified footer with two UI elements focused on translation:
+The translation UI elements (language dropdown and translate button) have been removed from the audio recorder component as per user request. These elements were previously located in:
+- The footer of the main transcript card in the recorder section
+- The footer of the modal transcript view when viewing a saved recording
 
-1. **Language Dropdown**: A dropdown that allows users to select different languages for translation (English, Dutch, German, French, Spanish)
-2. **Translate Button**: A light-colored button that triggers the translation action
-
-These UI elements appear in two places:
-- In the footer of the main transcript card in the recorder section
-- In the footer of the modal transcript view when viewing a saved recording
-
-The implementation follows these principles:
-- Consistent footer design across all transcript cards
-- Date display on the left side of the footer
-- Translation elements on the right side of the footer
-- Compact design with appropriate spacing between elements
-- Consistent styling with the rest of the application
-
-The footer is structured as a flex container with justify-between to place elements at opposite ends:
-```jsx
-<div className="px-4 py-3 border-t border-white/10 bg-white/5 text-xs text-white/60 flex justify-between items-center">
-  {/* Date on the left */}
-  <span>{date}</span>
-  
-  {/* Translation elements on the right */}
-  <div className="flex items-center space-x-3">
-    <Select>{/* Language dropdown */}</Select>
-    <Button className="h-6 text-xs bg-white/70 text-gray-800">Translate</Button>
-  </div>
-</div>
-```
-
-Currently, the UI is only visual and does not have functional translation capabilities. The dropdown includes language options that can be expanded in the future.
-
-## Translation UI Element
-
-### March 14, 2025
-
-The translation UI element has been added to the transcript cards in the audio recorder component. This UI element consists of:
-
-1. **Label**: A "Translate:" text label
-2. **Dropdown**: A Select component from the UI library with language options
-
-The translation UI appears in two places:
-- In the main transcript card in the recorder section
-- In the modal transcript view when viewing a saved recording
-
-The implementation follows these principles:
-- Consistent styling with the rest of the application
-- Compact design to avoid taking up too much space
-- Clear labeling to indicate functionality
-- Dropdown pattern for easy selection of languages
-
-Currently, the UI is only visual and does not have functional translation capabilities. The dropdown includes English, Dutch, German, French, and Spanish language options, which can be expanded in the future.
+The removal simplifies the UI and focuses the functionality on the core audio recording and transcription features.
 
 ## Account Page Layout
 
