@@ -843,6 +843,167 @@ export function useDatabase() {
     }
   }, [router, ensureUserProfile]);
 
+  // Translations
+  const createTranslation = useCallback(async (originalId: string, originalType: string, language: string, content: string, title?: string, metadata?: any) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('You must be logged in to create translations');
+      }
+      
+      const userId = session.user.id;
+      
+      // Ensure user profile exists
+      await ensureUserProfile(userId);
+      
+      const { data, error } = await supabase
+        .from('translations')
+        .insert({
+          user_id: userId,
+          original_id: originalId,
+          original_type: originalType,
+          language,
+          title,
+          content,
+          metadata
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        throw new Error(`Error creating translation: ${error.message}`);
+      }
+      
+      router.refresh();
+      return data;
+    } catch (err: any) {
+      setError(err.message);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [router, ensureUserProfile]);
+
+  const getTranslation = useCallback(async (originalId: string, language: string) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('You must be logged in to get translations');
+      }
+      
+      const userId = session.user.id;
+      
+      const { data, error } = await supabase
+        .from('translations')
+        .select('*')
+        .eq('original_id', originalId)
+        .eq('language', language)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (error) {
+        // If no translation found, return null instead of throwing an error
+        if (error.code === 'PGRST116') {
+          return null;
+        }
+        throw new Error(`Error fetching translation: ${error.message}`);
+      }
+      
+      return data;
+    } catch (err: any) {
+      if (err.message.includes('PGRST116')) {
+        // No translation found
+        return null;
+      }
+      setError(err.message);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const updateTranslation = useCallback(async (translationId: string, updates: Partial<{
+    title: string;
+    content: string;
+    metadata: any;
+  }>) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('You must be logged in to update translations');
+      }
+      
+      const userId = session.user.id;
+      
+      const { data, error } = await supabase
+        .from('translations')
+        .update(updates)
+        .eq('id', translationId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+      
+      if (error) {
+        throw new Error(`Error updating translation: ${error.message}`);
+      }
+      
+      router.refresh();
+      return data;
+    } catch (err: any) {
+      setError(err.message);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [router]);
+
+  const deleteTranslation = useCallback(async (translationId: string) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('You must be logged in to delete translations');
+      }
+      
+      const userId = session.user.id;
+      
+      const { error } = await supabase
+        .from('translations')
+        .delete()
+        .eq('id', translationId)
+        .eq('user_id', userId);
+      
+      if (error) {
+        throw new Error(`Error deleting translation: ${error.message}`);
+      }
+      
+      router.refresh();
+      return true;
+    } catch (err: any) {
+      setError(err.message);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [router]);
+
   return {
     isLoading,
     error,
@@ -869,6 +1030,11 @@ export function useDatabase() {
     getUserProfile,
     updateUserProfile,
     // Subscription
-    getUserSubscription
+    getUserSubscription,
+    // Translations
+    createTranslation,
+    getTranslation,
+    updateTranslation,
+    deleteTranslation
   };
 } 

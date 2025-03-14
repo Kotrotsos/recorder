@@ -187,6 +187,44 @@ export interface Database {
           updated_at?: string
         }
       }
+      translations: {
+        Row: {
+          id: string
+          user_id: string
+          original_id: string
+          original_type: string
+          language: string
+          title: string | null
+          content: string
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          original_id: string
+          original_type: string
+          language: string
+          title?: string | null
+          content: string
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          original_id?: string
+          original_type?: string
+          language?: string
+          title?: string | null
+          content?: string
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

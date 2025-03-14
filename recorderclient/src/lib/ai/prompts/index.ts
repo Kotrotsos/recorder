@@ -3,4 +3,5 @@
  */
 
 export { summarizePrompt } from './summarize';
-export { analyzePrompt } from './analyze'; 
+export { analyzePrompt } from './analyze';
+export { translatePrompt } from './translate'; 

@@ -275,4 +275,86 @@ export async function analyzeText(text: string): Promise<AIProcessingResult> {
       error: error instanceof Error ? error.message : String(error)
     };
   }
+}
+
+/**
+ * Send text for translation
+ * @param text The text to translate
+ * @param language The target language
+ * @returns The translation result
+ */
+export async function translateText(text: string, language: string): Promise<AIProcessingResult> {
+  try {
+    console.log(`API Client: Preparing to translate text of length ${text.length} to ${language}`);
+
+    // Call our API endpoint with longer timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    
+    try {
+      console.log("API Client: Sending translation request to API");
+      const response = await fetch('/api/ai/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        body: JSON.stringify({ text, language }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      console.log("API Client: Response received", {
+        status: response.status,
+        ok: response.ok,
+        statusText: response.statusText
+      });
+      
+      const result = await response.json();
+      console.log("API Client: Parsed response", result);
+
+      if (!response.ok) {
+        console.error("API Client: Translation request failed", {
+          status: response.status,
+          statusText: response.statusText,
+          error: result.error
+        });
+        return {
+          success: false,
+          error: result.error || `Server returned ${response.status}`
+        };
+      }
+
+      console.log("API Client: Translation successful");
+      return {
+        success: true,
+        result: result.result,
+        content: result.result
+      };
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        console.error("API Client: Request timed out");
+        return {
+          success: false,
+          error: 'Translation request timed out. The text might be too long or the server is busy.'
+        };
+      }
+      
+      console.error("API Client: Fetch error", fetchError);
+      return {
+        success: false,
+        error: fetchError instanceof Error ? fetchError.message : String(fetchError)
+      };
+    }
+  } catch (error) {
+    console.error("API Client: Unexpected error", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
 } 

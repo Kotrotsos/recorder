@@ -488,4 +488,91 @@ export async function updateUserProfile(userId: string, updates: Partial<{
   }
   
   return data;
+}
+
+// Translations
+export async function createTranslation(userId: string, originalId: string, originalType: string, language: string, content: string, title?: string, metadata?: any) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('translations')
+    .insert({
+      user_id: userId,
+      original_id: originalId,
+      original_type: originalType,
+      language,
+      title,
+      content,
+      metadata
+    })
+    .select()
+    .single();
+  
+  if (error) {
+    throw new Error(`Error creating translation: ${error.message}`);
+  }
+  
+  return data;
+}
+
+export async function getTranslation(userId: string, originalId: string, language: string) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('translations')
+    .select('*')
+    .eq('original_id', originalId)
+    .eq('language', language)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  
+  if (error) {
+    // If no translation found, return null instead of throwing an error
+    if (error.code === 'PGRST116') {
+      return null;
+    }
+    throw new Error(`Error fetching translation: ${error.message}`);
+  }
+  
+  return data;
+}
+
+export async function updateTranslation(userId: string, translationId: string, updates: Partial<{
+  title: string;
+  content: string;
+  metadata: any;
+}>) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('translations')
+    .update(updates)
+    .eq('id', translationId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+  
+  if (error) {
+    throw new Error(`Error updating translation: ${error.message}`);
+  }
+  
+  return data;
+}
+
+export async function deleteTranslation(userId: string, translationId: string) {
+  const supabase = createClient();
+  
+  const { error } = await supabase
+    .from('translations')
+    .delete()
+    .eq('id', translationId)
+    .eq('user_id', userId);
+  
+  if (error) {
+    throw new Error(`Error deleting translation: ${error.message}`);
+  }
+  
+  return true;
 } 

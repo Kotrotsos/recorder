@@ -3,12 +3,12 @@
 import type React from "react"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Upload, Mic, Square, Play, Pause, Save, Trash2, PlusCircle, X, Maximize2, Minimize2, ChevronDown, ChevronUp, Grid, List, ArrowUpDown, ArrowDown, ArrowUp } from "lucide-react"
+import { Upload, Mic, Square, Play, Pause, Save, Trash2, PlusCircle, X, Maximize2, Minimize2, ChevronDown, ChevronUp, Grid, List, ArrowUpDown, ArrowDown, ArrowUp, Unlink, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { transcribeAudio, summarizeText, analyzeText } from "@/lib/api-client"
+import { transcribeAudio, summarizeText, analyzeText, translateText } from "@/lib/api-client"
 import { toast } from "sonner"
 import { useDatabase } from '@/hooks/useDatabase'
 import {
@@ -102,6 +102,14 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
 
   // Map to store original IDs for each result
   const [originalIdMap, setOriginalIdMap] = useState<Record<number, string>>({});
+  
+  // Translation state
+  const [translatedContent, setTranslatedContent] = useState<string>("");
+  const [isTranslating, setIsTranslating] = useState<boolean>(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("english");
+  const [translatedTitle, setTranslatedTitle] = useState<string>("");
+  const [translationId, setTranslationId] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState<boolean>(false);
 
   // Initialize transcriptMap from initialResults
   useEffect(() => {
@@ -249,7 +257,10 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     getAnalysis,
     removeTranscriptionReference,
     isLoading: dbLoading, 
-    error: databaseError
+    error: databaseError,
+    createTranslation,
+    getTranslation,
+    updateTranslation
   } = useDatabase();
   
   // Effect to check if recording time has reached the limit
@@ -1486,6 +1497,284 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     setSortDirection(prev => prev === "asc" ? "desc" : "asc");
   };
 
+  // Function to handle translation
+  const handleTranslate = async (content: string, language: string, title?: string) => {
+    console.log("handleTranslate called with:", { content: content?.substring(0, 50) + "...", language, title });
+    
+    if (!content || !language || language === "english") {
+      console.log("Translation aborted: missing content or language, or language is English");
+      return;
+    }
+    
+    setIsTranslating(true);
+    console.log("isTranslating set to true");
+    
+    try {
+      // Check if we already have a translation for this content and language
+      if (selectedCard && selectedCard.originalId) {
+        console.log("Checking for existing translation for:", { originalId: selectedCard.originalId, language });
+        const existingTranslation = await getTranslation(selectedCard.originalId, language);
+        
+        if (existingTranslation) {
+          console.log(`AudioRecorder - Found existing translation for ${selectedCard.originalId} in ${language}`);
+          const translatedContent = existingTranslation.content;
+          const translatedTitle = existingTranslation.title || "";
+          
+          setTranslatedContent(translatedContent);
+          setTranslatedTitle(translatedTitle);
+          setTranslationId(existingTranslation.id);
+          setSelectedLanguage(language);
+          
+          // If this is a transcript, update the transcript content
+          if (selectedCard.type === 'transcribe') {
+            // Update the transcript content
+            setTranscriptContent(translatedContent);
+            
+            // Update the transcript map
+            setTranscriptMap(prev => ({
+              ...prev,
+              [selectedCard.id]: translatedContent
+            }));
+            
+            // Update the processed results
+            setProcessedResults(prev => prev.map(item => 
+              item.id === selectedCard.id 
+                ? { 
+                    ...item, 
+                    content: translatedContent,
+                    title: translatedTitle || item.title
+                  } 
+                : item
+            ));
+            
+            // Notify parent of changes if callback exists
+            if (onResultsChange) {
+              onResultsChange(
+                processedResults.map(item => 
+                  item.id === selectedCard.id 
+                    ? { 
+                        ...item, 
+                        content: translatedContent,
+                        title: translatedTitle || item.title
+                      } 
+                    : item
+                )
+              );
+            }
+          }
+          
+          return;
+        } else {
+          console.log("No existing translation found, proceeding with new translation");
+        }
+      } else {
+        console.log("No originalId available for selectedCard:", selectedCard);
+      }
+      
+      // Translate the content
+      console.log("Calling translateText API with:", { contentLength: content.length, language });
+      const translationResult = await translateText(content, language);
+      console.log("Translation result:", { success: translationResult.success, contentLength: translationResult.content?.length });
+      
+      if (translationResult.success && translationResult.content) {
+        const translatedContent = translationResult.content;
+        setTranslatedContent(translatedContent);
+        
+        // Translate the title if provided
+        let translatedTitleText = "";
+        if (title) {
+          const titleTranslationResult = await translateText(title, language);
+          
+          if (titleTranslationResult.success && titleTranslationResult.content) {
+            translatedTitleText = titleTranslationResult.content;
+            setTranslatedTitle(translatedTitleText);
+          }
+        }
+        
+        // Store the translation in the database if authenticated
+        if (isAuthenticated && selectedCard && selectedCard.originalId) {
+          const originalType = selectedCard.type === 'transcribe' 
+            ? 'transcription' 
+            : selectedCard.type === 'summarize' 
+              ? 'summary' 
+              : 'analysis';
+          
+          const translationData = await createTranslation(
+            selectedCard.originalId,
+            originalType,
+            language,
+            translatedContent,
+            translatedTitleText || title,
+            { source: "recorder" }
+          );
+          
+          if (translationData) {
+            console.log("Translation saved to database");
+            setTranslationId(translationData.id);
+          }
+        }
+        
+        // If this is a transcript, update the transcript content
+        if (selectedCard && selectedCard.type === 'transcribe') {
+          // Update the transcript content
+          setTranscriptContent(translatedContent);
+          
+          // Update the transcript map
+          setTranscriptMap(prev => ({
+            ...prev,
+            [selectedCard.id]: translatedContent
+          }));
+          
+          // Update the processed results
+          setProcessedResults(prev => prev.map(item => 
+            item.id === selectedCard.id 
+              ? { 
+                  ...item, 
+                  content: translatedContent,
+                  title: translatedTitleText || item.title
+                } 
+              : item
+          ));
+          
+          // Notify parent of changes if callback exists
+          if (onResultsChange) {
+            onResultsChange(
+              processedResults.map(item => 
+                item.id === selectedCard.id 
+                  ? { 
+                      ...item, 
+                      content: translatedContent,
+                      title: translatedTitleText || item.title
+                    } 
+                  : item
+              )
+            );
+          }
+          
+          // Show success message
+          toast.success("Transcript translated", {
+            description: "The transcript has been translated and will be used for future operations."
+          });
+        }
+      } else {
+        toast.error("Translation failed", { 
+          description: translationResult.error || "An unknown error occurred" 
+        });
+        setTranslatedContent("");
+        setTranslatedTitle("");
+      }
+    } catch (error) {
+      console.error("Translation error details:", error);
+      toast.error("Translation failed", { 
+        description: error instanceof Error ? error.message : "An unknown error occurred" 
+      });
+      setTranslatedContent("");
+      setTranslatedTitle("");
+    } finally {
+      console.log("Translation process completed, setting isTranslating to false");
+      setIsTranslating(false);
+    }
+  };
+
+  // Load translation when card or language changes
+  useEffect(() => {
+    const loadTranslation = async () => {
+      if (selectedCard && selectedCard.originalId && selectedLanguage !== "english") {
+        setIsTranslating(true);
+        try {
+          const existingTranslation = await getTranslation(selectedCard.originalId, selectedLanguage);
+          
+          if (existingTranslation) {
+            console.log(`AudioRecorder - Found existing translation for ${selectedCard.originalId} in ${selectedLanguage}`);
+            const translatedContent = existingTranslation.content;
+            const translatedTitle = existingTranslation.title || "";
+            
+            setTranslatedContent(translatedContent);
+            setTranslatedTitle(translatedTitle);
+            setTranslationId(existingTranslation.id);
+            
+            // If this is a transcript, update the transcript content
+            if (selectedCard.type === 'transcribe') {
+              // Update the transcript content
+              setTranscriptContent(translatedContent);
+              
+              // Update the transcript map
+              setTranscriptMap(prev => ({
+                ...prev,
+                [selectedCard.id]: translatedContent
+              }));
+              
+              // Update the processed results
+              setProcessedResults(prev => prev.map(item => 
+                item.id === selectedCard.id 
+                  ? { 
+                      ...item, 
+                      content: translatedContent,
+                      title: translatedTitle || item.title
+                    } 
+                  : item
+              ));
+              
+              // Notify parent of changes if callback exists
+              if (onResultsChange) {
+                onResultsChange(
+                  processedResults.map(item => 
+                    item.id === selectedCard.id 
+                      ? { 
+                          ...item, 
+                          content: translatedContent,
+                          title: translatedTitle || item.title
+                        } 
+                      : item
+                  )
+                );
+              }
+            }
+          } else {
+            // No translation found, reset state
+            setTranslatedContent("");
+            setTranslatedTitle("");
+            setTranslationId(null);
+          }
+        } catch (error) {
+          console.error("Error loading translation:", error);
+          setTranslatedContent("");
+          setTranslatedTitle("");
+          setTranslationId(null);
+        } finally {
+          setIsTranslating(false);
+        }
+      } else {
+        // Reset translation state when switching back to English
+        setTranslatedContent("");
+        setTranslatedTitle("");
+        setTranslationId(null);
+      }
+    };
+    
+    loadTranslation();
+  }, [selectedCard, selectedLanguage, getTranslation, onResultsChange, processedResults]);
+
+  // Function to copy content to clipboard
+  const copyToClipboard = () => {
+    const contentToCopy = translatedContent && selectedLanguage !== "english" 
+      ? translatedContent 
+      : selectedCard?.content.includes("This is a")
+        ? selectedCard.content.replace(/^This is a (summary|analysis) of the audio recording\.\s+/, "")
+        : selectedCard?.content;
+    
+    if (contentToCopy) {
+      navigator.clipboard.writeText(contentToCopy)
+        .then(() => {
+          setCopySuccess(true);
+          setTimeout(() => setCopySuccess(false), 2000);
+        })
+        .catch(err => {
+          console.error('Failed to copy text: ', err);
+        });
+    }
+  };
+
   return (
     <>
       {processedResults.length > 0 && (
@@ -1915,8 +2204,17 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                           variant="outline" 
                           size="sm" 
                           className="h-6 text-xs bg-white/70 text-gray-800 hover:bg-white/90 border-white/20"
+                          onClick={() => {
+                            console.log("Translate button clicked", { 
+                              selectedCard: selectedCard?.id,
+                              content: selectedCard?.content?.substring(0, 50) + "...", 
+                              language: selectedLanguage
+                            });
+                            handleTranslate(selectedCard?.content || "", selectedLanguage, selectedCard?.title);
+                          }}
+                          disabled={isTranslating || selectedLanguage === "english"}
                         >
-                          Translate
+                          {isTranslating ? "Translating..." : "Translate"}
                         </Button>
                       </div>
                     </div>
@@ -2057,7 +2355,13 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
           </DialogHeader>
           <div className="p-3 border-b border-white/20 bg-white/5 flex items-center">
             <h4 className="font-medium text-white text-base truncate flex-1">
-              {selectedCard?.title || (selectedCard?.type === "summarize" ? "Summary" : "Analysis")}
+              {translatedTitle && selectedLanguage !== "english" 
+                ? translatedTitle 
+                : selectedCard?.title || (selectedCard?.type === 'transcribe' 
+                  ? 'Transcript' 
+                  : selectedCard?.type === 'summarize' 
+                    ? 'Summary' 
+                    : 'Analysis')}
             </h4>
             <DialogClose className="h-6 w-6 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex-shrink-0 ml-2 flex items-center justify-center">
               <X className="h-3 w-3" />
@@ -2067,9 +2371,21 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
             {selectedCard ? (
               <>
                 <div className="whitespace-pre-line flex-1">
-                  {selectedCard.content.includes("This is a") ? 
-                    selectedCard.content.replace(/^This is a (summary|analysis) of the audio recording\.\s+/, "") : 
-                    selectedCard.content}
+                  {isTranslating ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-pulse">Translating...</div>
+                    </div>
+                  ) : translatedContent && selectedLanguage !== "english" ? (
+                    <div className="whitespace-pre-line">
+                      {translatedContent}
+                    </div>
+                  ) : (
+                    <div className="whitespace-pre-line">
+                      {selectedCard.content.includes("This is a") ? 
+                        selectedCard.content.replace(/^This is a (summary|analysis) of the audio recording\.\s+/, "") : 
+                        selectedCard.content}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="mt-4">
@@ -2108,10 +2424,11 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                               }));
                             }
                             else if ((selectedCard.type === 'summarize' || selectedCard.type === 'analyze') && 
-                                    selectedCard.originalId) {
-                              console.log(`AudioRecorder - Fetching transcript for analysis ID ${selectedCard.originalId}`);
+                                    (selectedCard.originalId || originalIdMap[selectedCard.id])) {
+                              const originalId = selectedCard.originalId || originalIdMap[selectedCard.id];
+                              console.log(`AudioRecorder - Fetching transcript for analysis ID ${originalId}`);
                               // For summaries and analyses, we need to get the transcription via the analysis record
-                              fetchTranscriptionForAnalysis(selectedCard.originalId, selectedCard.id)
+                              fetchTranscriptionForAnalysis(originalId, selectedCard.id)
                                 .then(content => {
                                   if (content) {
                                     setTranscriptMap(prevMap => ({
@@ -2154,7 +2471,25 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               })}</span>
               
               <div className="flex items-center space-x-3">
-                <Select defaultValue="english">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-white/70 hover:text-white hover:bg-white/10"
+                  onClick={copyToClipboard}
+                  title="Copy to clipboard"
+                >
+                  {copySuccess ? (
+                    <span className="text-green-400 text-xs">Copied!</span>
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+                
+                <Select 
+                  defaultValue="english" 
+                  value={selectedLanguage}
+                  onValueChange={(value) => setSelectedLanguage(value)}
+                >
                   <SelectTrigger className="h-6 w-24 text-xs bg-white/10 border-white/20 [&_svg]:text-white">
                     <SelectValue placeholder="English" />
                   </SelectTrigger>
@@ -2171,8 +2506,17 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                   variant="outline" 
                   size="sm" 
                   className="h-6 text-xs bg-white/70 text-gray-800 hover:bg-white/90 border-white/20"
+                  onClick={() => {
+                    console.log("Translate button clicked", { 
+                      selectedCard: selectedCard?.id,
+                      content: selectedCard?.content?.substring(0, 50) + "...", 
+                      language: selectedLanguage
+                    });
+                    handleTranslate(selectedCard?.content || "", selectedLanguage, selectedCard?.title);
+                  }}
+                  disabled={isTranslating || selectedLanguage === "english"}
                 >
-                  Translate
+                  {isTranslating ? "Translating..." : "Translate"}
                 </Button>
               </div>
             </div>
