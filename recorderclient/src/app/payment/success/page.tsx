@@ -9,22 +9,64 @@ export default function PaymentSuccessPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [subscription, setSubscription] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [statusUpdateSuccess, setStatusUpdateSuccess] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const checkSubscription = async () => {
+    const processPayment = async () => {
       try {
         setIsLoading(true);
-        const sub = await getUserSubscription();
-        setSubscription(sub);
+        
+        // Get userId from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('userId');
+        
+        if (!userId) {
+          console.error('No userId found in URL parameters');
+          setError('No user ID found. Please contact support.');
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log(`Found userId in URL parameters: ${userId.substring(0, 8)}...`);
+        
+        // Call the API route to update subscription status
+        const response = await fetch('/api/update-subscription-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId }),
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          console.error('Error updating subscription status:', data.error);
+          setStatusUpdateSuccess(false);
+          setError(`Error updating subscription: ${data.error}`);
+        } else {
+          console.log('Subscription status updated successfully:', data);
+          setStatusUpdateSuccess(true);
+          
+          // If the API returned the subscription, use it
+          if (data.subscription) {
+            setSubscription(Array.isArray(data.subscription) ? data.subscription[0] : data.subscription);
+          } else {
+            // Otherwise, get the updated subscription
+            const sub = await getUserSubscription();
+            setSubscription(sub);
+          }
+        }
       } catch (err: any) {
-        console.error('Error fetching subscription:', err);
+        console.error('Error processing payment:', err);
+        setStatusUpdateSuccess(false);
         setError(err.message || 'Failed to verify your subscription');
       } finally {
         setIsLoading(false);
       }
     };
 
-    checkSubscription();
+    processPayment();
   }, []);
 
   return (
@@ -80,12 +122,22 @@ export default function PaymentSuccessPage() {
               </p>
             </div>
             
+            {statusUpdateSuccess === false && (
+              <div className="bg-amber-900/30 p-4 rounded-lg">
+                <p className="text-amber-300 text-sm">
+                  Note: We've received your payment, but there was an issue updating your account status. 
+                  Don't worry, this will be resolved automatically. If you continue to see this message, 
+                  please contact support.
+                </p>
+              </div>
+            )}
+            
             {subscription && (
               <div className="text-left bg-black/20 p-4 rounded-lg">
                 <h2 className="text-white font-medium mb-2">Subscription Details</h2>
                 <ul className="space-y-1 text-sm text-white/70">
                   <li><span className="text-white/50">Plan:</span> Lifetime Supporter</li>
-                  <li><span className="text-white/50">Status:</span> {subscription.status}</li>
+                  <li><span className="text-white/50">Status:</span> {subscription.status === 'goldmember' ? 'Gold Member' : subscription.status}</li>
                   <li><span className="text-white/50">Date:</span> {new Date(subscription.created_at).toLocaleDateString()}</li>
                 </ul>
               </div>

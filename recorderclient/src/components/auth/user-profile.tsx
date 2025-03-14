@@ -107,7 +107,7 @@ export default function UserProfile() {
           
           {isSupporter && (
             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-              <h3 className="text-amber-400 font-medium mb-1">Lifetime Supporter</h3>
+              <h3 className="text-amber-400 font-medium mb-1">You are awesome, Goldmember!</h3>
               <p className="text-xs text-white/80">
                 Thank you for supporting this project! You have lifetime access to all premium features.
               </p>

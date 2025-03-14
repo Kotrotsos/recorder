@@ -101,10 +101,10 @@ export default function TermsLayout({ children, title, description }: TermsLayou
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-pink-200">rec.ai</span>
           </Link>
         </div>
-        <nav>
-          <ul className="flex space-x-6 text-sm font-medium text-white/80">
-            <li><Link href="#" className="hover:text-white transition-colors">About</Link></li>
-            <li><Link href="#" className="hover:text-white transition-colors">Pricing</Link></li>
+        <nav className="flex items-center">
+          <ul className="flex items-center space-x-6 text-sm font-medium text-white/80">
+            <li className="flex items-center"><Link href="#" className="hover:text-white transition-colors">About</Link></li>
+            <li className="flex items-center"><Link href="#" className="hover:text-white transition-colors">Pricing</Link></li>
           </ul>
         </nav>
       </header>

@@ -95,14 +95,14 @@ export default function AboutPageClient() {
             rec.ai
           </Link>
         </div>
-        <nav>
-          <ul className="flex space-x-6 text-sm font-medium text-white/80">
-            <li><Link href="/about" className="text-white transition-colors">About</Link></li>
-            <li><Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
-            <li>
+        <nav className="flex items-center">
+          <ul className="flex items-center space-x-6 text-sm font-medium text-white/80">
+            <li className="flex items-center"><Link href="/about" className="text-white transition-colors">About</Link></li>
+            <li className="flex items-center"><Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
+            <li className="flex items-center">
               <Link 
                 href="/login" 
-                className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors flex items-center"
               >
                 Login
               </Link>

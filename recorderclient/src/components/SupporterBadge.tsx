@@ -18,11 +18,13 @@ export default function SupporterBadge({
   useEffect(() => {
     const checkSupporterStatus = async () => {
       try {
+        console.log('SupporterBadge - Checking supporter status');
         setIsLoading(true);
         const supporter = await isLifetimeSupporter();
+        console.log('SupporterBadge - Supporter status result:', supporter);
         setIsSupporter(supporter);
       } catch (error) {
-        console.error('Error checking supporter status:', error);
+        console.error('SupporterBadge - Error checking supporter status:', error);
         setIsSupporter(false);
       } finally {
         setIsLoading(false);
@@ -42,9 +44,11 @@ export default function SupporterBadge({
   }
 
   if (!isSupporter) {
+    console.log('SupporterBadge - Not a supporter, returning null');
     return null;
   }
 
+  console.log('SupporterBadge - Is a supporter, showing badge');
   return (
     <div className={`inline-flex items-center ${className}`}>
       <div className="relative">

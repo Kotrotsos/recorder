@@ -203,6 +203,12 @@ export async function POST(req: NextRequest) {
     
     // Create Checkout Session with all necessary parameters
     console.log('Creating Stripe checkout session...');
+    
+    // Add userId to success URL
+    const successUrl = new URL(process.env.STRIPE_SUCCESS_URL!);
+    successUrl.searchParams.append('userId', user.id);
+    console.log('Modified success URL:', successUrl.toString());
+    
     const stripeSession = await stripe.checkout.sessions.create({
       line_items: [
         {
@@ -211,7 +217,7 @@ export async function POST(req: NextRequest) {
         },
       ],
       mode: 'payment',
-      success_url: process.env.STRIPE_SUCCESS_URL!,
+      success_url: successUrl.toString(),
       cancel_url: process.env.STRIPE_CANCEL_URL!,
       metadata: {
         plan: 'lifetime',

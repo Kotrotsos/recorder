@@ -187,7 +187,7 @@ export default function PricingPageClient() {
     if (isSupporter) {
       return (
         <div className="block w-full text-center py-3 px-4 bg-gradient-to-r from-amber-600 to-yellow-600 text-white font-medium rounded-xl">
-          You are a Lifetime Supporter ✓
+          You are Goldmember! ✓
         </div>
       );
     }
@@ -218,18 +218,18 @@ export default function PricingPageClient() {
             rec.ai
           </Link>
         </div>
-        <nav>
-          <ul className="flex space-x-6 text-sm font-medium text-white/80">
-            <li><Link href="/about" className="hover:text-white transition-colors">About</Link></li>
-            <li><Link href="/pricing" className="text-white transition-colors">Pricing</Link></li>
+        <nav className="flex items-center">
+          <ul className="flex items-center space-x-6 text-sm font-medium text-white/80">
+            <li className="flex items-center"><Link href="/about" className="hover:text-white transition-colors">About</Link></li>
+            <li className="flex items-center"><Link href="/pricing" className="text-white transition-colors">Pricing</Link></li>
             {authError ? (
-              <li>
+              <li className="flex items-center">
                 <div className="px-4 py-2 bg-red-500/20 rounded-full text-white">
                   Auth Error
                 </div>
               </li>
             ) : authLoading ? (
-              <li>
+              <li className="flex items-center">
                 <div className="px-4 py-2 bg-white/10 rounded-full">
                   <div className="w-12 h-4 bg-white/20 animate-pulse rounded-full"></div>
                 </div>
@@ -239,16 +239,16 @@ export default function PricingPageClient() {
                 {isSupporter && <SupporterBadge className="mr-2" showText={false} />}
                 <Link 
                   href="/account" 
-                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors flex items-center"
                 >
                   Account
                 </Link>
               </li>
             ) : (
-              <li>
+              <li className="flex items-center">
                 <Link 
                   href="/login" 
-                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors flex items-center"
                 >
                   Login
                 </Link>
@@ -325,12 +325,18 @@ export default function PricingPageClient() {
               </div>
               
               <div className="text-center">
-                <Link 
-                  href="/register" 
-                  className="block w-full py-3 px-4 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-medium rounded-xl transition-colors"
-                >
-                  Get Started Now
-                </Link>
+                {isSupporter ? (
+                  <div className="block w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-medium rounded-xl">
+                    No need, you are Goldmember! ✓
+                  </div>
+                ) : (
+                  <Link 
+                    href="/register" 
+                    className="block w-full py-3 px-4 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-medium rounded-xl transition-colors"
+                  >
+                    Get Started Now
+                  </Link>
+                )}
                 <p className="text-white/60 text-sm mt-4">
                   Paid plans with additional features coming soon
                 </p>

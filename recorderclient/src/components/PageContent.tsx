@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import useAuth from '@/hooks/useAuth';
+import { isLifetimeSupporter } from '@/utils/subscription';
+import SupporterBadge from '@/components/SupporterBadge';
 
 // Use dynamic import with SSR disabled for the AudioRecorder component
 const AudioRecorderWrapper = dynamic(() => import('@/components/audio/audio-wrapper'), {
@@ -22,7 +24,35 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
   const [hasProcessedResults, setHasProcessedResults] = useState<boolean>(false);
   // Add loading state for cards
   const [cardsLoading, setCardsLoading] = useState<boolean>(true);
+  // Add state to track if user is a goldmember
+  const [isGoldmember, setIsGoldmember] = useState<boolean>(false);
+  const [goldmemberLoading, setGoldmemberLoading] = useState<boolean>(true);
   
+  // Check if user is a goldmember
+  useEffect(() => {
+    const checkGoldmemberStatus = async () => {
+      if (isAuthenticated) {
+        try {
+          setGoldmemberLoading(true);
+          const supporter = await isLifetimeSupporter();
+          setIsGoldmember(supporter);
+        } catch (error) {
+          console.error('Error checking goldmember status:', error);
+          setIsGoldmember(false);
+        } finally {
+          setGoldmemberLoading(false);
+        }
+      } else {
+        setIsGoldmember(false);
+        setGoldmemberLoading(false);
+      }
+    };
+    
+    if (!authLoading) {
+      checkGoldmemberStatus();
+    }
+  }, [isAuthenticated, authLoading]);
+
   // Listen for the custom event from AudioWrapper
   useEffect(() => {
     const handleResultsChange = (event: CustomEvent<{ hasResults: boolean }>) => {
@@ -149,22 +179,31 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
         <div className="text-white font-bold text-2xl">
           <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-pink-200">rec.ai</span>
         </div>
-        <nav>
-          <ul className="flex space-x-6 text-sm font-medium text-white/80">
-            <li><Link href="/about" className="hover:text-white transition-colors">About</Link></li>
-            <li><Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
-            <li>
+        <nav className="flex items-center">
+          {isAuthenticated && isGoldmember && !goldmemberLoading && (
+            <div className="mr-6 hidden md:flex items-center">
+              <span className="text-amber-400 text-sm font-medium mr-2">You are awesome, Goldmember</span>
+              <SupporterBadge />
+            </div>
+          )}
+          <ul className="flex items-center space-x-6 text-sm font-medium text-white/80">
+            <li className="flex items-center"><Link href="/about" className="hover:text-white transition-colors">About</Link></li>
+            <li className="flex items-center"><Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
+            <li className="flex items-center">
               {isAuthenticated ? (
                 <Link 
                   href="/account" 
-                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors flex items-center"
                 >
+                  {isGoldmember && !goldmemberLoading && (
+                    <SupporterBadge className="mr-2" showText={false} />
+                  )}
                   My Account
                 </Link>
               ) : (
                 <Link 
                   href="/login" 
-                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                  className="px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors flex items-center"
                 >
                   Login
                 </Link>
