@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { createClient } from '@/lib/supabase'
+import { usePathname } from 'next/navigation'
 
 interface UISettings {
   id?: string
@@ -49,7 +50,9 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
   const [savedSettings, setSavedSettings] = useState<UISettings>(defaultSettings)
   const [loading, setLoading] = useState(true)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [lastApplied, setLastApplied] = useState<number>(0)
   const supabase = createClient()
+  const pathname = usePathname()
 
   useEffect(() => {
     const fetchUISettings = async () => {
@@ -198,21 +201,64 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
     
     // Ensure this runs in the client
     if (typeof window === 'undefined') return
+
+    // Update the last applied timestamp to track when styles were most recently applied
+    setLastApplied(Date.now())
     
     // Wait for next tick to ensure DOM is ready
     setTimeout(() => {
       try {
+        // Select all animated-gradient elements, including those inside the auth-layout
+        const gradientElements = document.querySelectorAll('.animated-gradient')
+        
+        // Check if we're on the account page
+        const isAccountPage = pathname && typeof pathname === 'string' && pathname.indexOf('/account') >= 0
+        
         // Apply background based on mode
         if (uiSettings.ui_mode === 'fun') {
           // Apply gradient background
-          document.querySelectorAll('.animated-gradient').forEach((el) => {
-            (el as HTMLElement).style.background = `linear-gradient(to bottom right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`
+          gradientElements.forEach((el) => {
+            const element = el as HTMLElement
+            element.style.background = `linear-gradient(to bottom right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`
+            
+            // Ensure animation properties are maintained
+            element.style.backgroundSize = '200% 200%'
+            element.style.animation = 'gradientShift 15s ease infinite'
           })
+
+          // Special handling for account page gradient
+          if (isAccountPage) {
+            // Find the account page container
+            const accountContainer = document.querySelector('.min-h-screen.flex.flex-col.relative.overflow-hidden')
+            if (accountContainer) {
+              (accountContainer as HTMLElement).style.background = `linear-gradient(to bottom right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`
+              // Force proper animation
+              (accountContainer as HTMLElement).style.backgroundSize = '200% 200%'
+              ;(accountContainer as HTMLElement).style.animation = 'gradientShift 15s ease infinite'
+            }
+          }
         } else {
           // Apply flat background
-          document.querySelectorAll('.animated-gradient').forEach((el) => {
-            (el as HTMLElement).style.background = uiSettings.flat_color
+          gradientElements.forEach((el) => {
+            const element = el as HTMLElement
+            element.style.background = uiSettings.flat_color
+            
+            // Clear animation properties for flat mode
+            element.style.backgroundSize = 'auto'
+            element.style.animation = 'none'
           })
+
+          // Special handling for account page
+          if (isAccountPage) {
+            // Find the account page container
+            const accountContainer = document.querySelector('.min-h-screen.flex.flex-col.relative.overflow-hidden')
+            if (accountContainer) {
+              (accountContainer as HTMLElement).style.background = uiSettings.flat_color
+              // Clear animation for flat mode
+              (accountContainer as HTMLElement).style.backgroundSize = 'auto'
+              ;(accountContainer as HTMLElement).style.animation = 'none'
+            }
+          }
         }
         
         // Apply foreground color to text elements
@@ -234,6 +280,52 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
       applyUISettings()
     }
   }, [loading, uiSettings.ui_mode, uiSettings.gradient_from, uiSettings.gradient_via, uiSettings.gradient_to, uiSettings.flat_color, uiSettings.foreground_color])
+
+  // Apply settings when the pathname changes, focusing on the account page
+  useEffect(() => {
+    // If we have a pathname and we're not loading
+    if (pathname && !loading) {
+      // Apply settings with a small delay to ensure the DOM is ready
+      setTimeout(() => {
+        applyUISettings()
+        
+        // For account page, apply a second time after a slightly longer delay
+        // to ensure AuthLayout has fully rendered
+        const isAccountPage = pathname && typeof pathname === 'string' && pathname.indexOf('/account') >= 0
+        if (isAccountPage) {
+          setTimeout(() => {
+            applyUISettings()
+          }, 300)
+        }
+      }, 50)
+    }
+  }, [pathname, loading])
+
+  // Periodically check and reapply styles on the account page
+  // This helps catch any cases where styles weren't properly applied
+  useEffect(() => {
+    // Only run this on the account page and when not loading
+    const isAccountPage = pathname && typeof pathname === 'string' && pathname.indexOf('/account') >= 0
+    if (!isAccountPage || loading) return
+
+    // Set up a check every 500ms for the first 3 seconds
+    const intervalId = setInterval(() => {
+      // Only reapply if it's been more than 300ms since the last application
+      if (Date.now() - lastApplied > 300) {
+        applyUISettings()
+      }
+    }, 500)
+
+    // Clear after 3 seconds
+    const timeoutId = setTimeout(() => {
+      clearInterval(intervalId)
+    }, 3000)
+
+    return () => {
+      clearInterval(intervalId)
+      clearTimeout(timeoutId)
+    }
+  }, [pathname, loading, lastApplied])
 
   return (
     <UISettingsContext.Provider value={{ 

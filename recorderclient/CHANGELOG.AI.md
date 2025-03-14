@@ -977,3 +977,35 @@ Hydration failed because the server rendered HTML didn't match the client.
 ```
 
 The issue was caused by mixing Tailwind classes and inline styles that were being processed differently between server and client rendering. By moving all styling to inline style objects with proper typing and adding client-side detection for browser-specific features like blur effects, we ensure that the HTML generated on both server and client is consistent, eliminating the hydration error.
+
+## 2025-03-14 22:26:23 - Enhanced UI Settings Application for Account Page
+
+### Fixed
+- Fixed issue where the account page would sometimes use default styling until reload
+- Implemented aggressive styling reapplication specifically for the account page
+- Added special path detection for account page to apply custom styling
+- Created a periodic style check that runs for the first 3 seconds after navigation
+- Added multiple delayed style applications to ensure styles are properly applied
+- Improved detection of account page container elements for direct styling
+
+### Enhanced
+- Added animation property preservation to ensure gradients remain animated
+- Improved styling persistence between page navigations
+- Added timestamp tracking to prevent excessive style reapplications
+- Added additional safety checks for pathname and DOM elements
+- Enhanced error handling throughout the styling process
+
+### Files Changed
+- Modified `src/contexts/ui-settings-context.tsx`
+
+### Reason for Changes
+This update addresses a critical issue where the account page sometimes appeared with default styling until manually reloaded. The problem was happening because styles weren't being properly applied during navigation to the account page. 
+
+The solution implements several layers of defense:
+1. Direct styling of the account page container with proper path detection
+2. Immediate style application on navigation with special handling for the account page
+3. A second delayed application to catch late-rendered elements
+4. A periodic check that runs for 3 seconds after navigation to ensure styles persist
+5. Proper animation property preservation to maintain the look and feel
+
+These changes ensure that custom UI settings are consistently applied when navigating to the account page without requiring manual page refreshes.
