@@ -2459,3 +2459,92 @@ const LoadingOverlay = ({ children, fullHeight = false }) => {
 6. If loading takes too long (over 5 seconds), a safety timeout automatically shows content
 
 This system helps prevent the UI flashing with incorrect styles during navigation and provides visual feedback to users during loading periods. The safety mechanisms ensure users are never stuck on a loading screen, even if there are issues with style application.
+
+## Loading State Management System
+
+### March 14, 2025
+
+The application now includes a global loading state management system implemented through a React context provider. This system allows for consistent loading indicators to be displayed across the application.
+
+### Implementation Details
+
+1. **Loading Context Provider**:
+   - Implemented as a React context that manages loading state globally
+   - Provides a boolean `isLoading` state and a `setIsLoading` function to update it
+   - Any component in the application can access this state using the `useLoading` hook
+
+   ```typescript
+   // The core of the loading context
+   const LoadingContext = createContext<LoadingContextType>({
+     isLoading: false,
+     setIsLoading: () => {},
+   });
+   
+   export const useLoading = () => useContext(LoadingContext);
+   ```
+
+2. **Loading Overlay Component**:
+   - Wraps children components and displays a loading indicator when loading state is active
+   - Creates a semi-transparent overlay with a centered loading spinner
+   - Uses backdrop blur for a modern visual effect
+   - Supports a `fullHeight` prop to extend to full container height when needed
+
+   ```typescript
+   // Key aspects of the loading overlay implementation
+   return (
+     <div className={cn("relative", fullHeight && "h-full")}>
+       {children}
+       
+       {isLoading && (
+         <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-50 backdrop-blur-sm">
+           <div className="flex flex-col items-center gap-2">
+             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+             <p className="text-sm text-muted-foreground">Loading...</p>
+           </div>
+         </div>
+       )}
+     </div>
+   );
+   ```
+
+3. **Integration with Root Layout**:
+   - The LoadingProvider is positioned in the layout hierarchy to make loading state available to all components
+   - All application content is wrapped in the LoadingOverlay component
+   - This ensures a consistent loading experience throughout the application
+
+### Usage Pattern
+
+To use the loading system in any component:
+
+1. Import the `useLoading` hook:
+   ```typescript
+   import { useLoading } from '@/contexts/loading-context';
+   ```
+
+2. Access the loading state and setter:
+   ```typescript
+   const { isLoading, setIsLoading } = useLoading();
+   ```
+
+3. Set loading state when needed:
+   ```typescript
+   // Start loading
+   setIsLoading(true);
+   
+   // Perform async operation
+   await someAsyncOperation();
+   
+   // End loading
+   setIsLoading(false);
+   ```
+
+The loading overlay will automatically appear whenever `isLoading` is set to `true` and disappear when set back to `false`.
+
+### Benefits
+
+This loading system provides several benefits:
+- Consistent loading experience across the application
+- Centralized management of loading state
+- Prevents user interaction while data is loading
+- Provides clear visual feedback during asynchronous operations
+- Enhances perceived performance by communicating system state to users
