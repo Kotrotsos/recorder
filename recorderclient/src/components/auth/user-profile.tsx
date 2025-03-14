@@ -78,8 +78,8 @@ export default function UserProfile() {
   }
 
   return (
-    <Card className="w-full backdrop-blur-sm bg-white/5 border-0 shadow-lg">
-      <CardHeader className="space-y-1">
+    <Card className="w-full backdrop-blur-sm bg-white/5 border-0 shadow-lg h-full">
+      <CardHeader className="space-y-1 p-6">
         <div className="flex items-center justify-between">
           <CardTitle className="text-2xl font-bold text-white">Your Profile</CardTitle>
           {isSupporter && <SupporterBadge className="ml-2" />}
@@ -88,7 +88,7 @@ export default function UserProfile() {
           Manage your account settings
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6 pt-0">
         <form onSubmit={handleUpdateProfile} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email" className="text-white">Email</Label>
@@ -129,7 +129,7 @@ export default function UserProfile() {
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex justify-between border-t border-white/10 pt-4">
+      <CardFooter className="flex justify-between border-t border-white/10 pt-4 p-6">
         <div className="text-sm text-white/60">
           User ID: {user.id.substring(0, 8)}...
         </div>

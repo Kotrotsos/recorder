@@ -343,6 +343,21 @@ This file documents all the changes made by AI assistance.
 - Enhanced logging throughout the authentication process for better diagnostics
 - Updated both StripeCheckout component and auth-test page with improved token handling 
 
+## March 14, 2025 - 15:09 CET
+
+### Added
+- Split the account page into a two-column layout
+- Added a new webhook settings card in the left column
+- Kept the existing profile settings in the right column
+- Created a new WebhookSettings component with URL field and event dropdown
+- Added webhook event options: "After transcription created" and "After analysis created"
+- Implemented save functionality for webhook settings
+- Created a new webhook_settings table in the Supabase database
+- Added proper Row Level Security (RLS) policies for the webhook_settings table
+- Implemented form validation and error handling for webhook settings
+- Added success/error messaging for webhook operations
+- Ensured responsive layout that stacks columns on mobile devices
+
 ## March 14, 2025 - 16:00 CET
 
 ### Added
@@ -525,3 +540,14 @@ This file documents all the changes made by AI assistance.
 - This creates better visual contrast between the Free tier and the background
 - Maintains consistent styling with the overall design language
 - Improves readability of the pricing card content 
+
+## March 14, 2025 - 15:14 CET
+
+### Enhanced
+- Improved the account page layout by making the columns significantly wider
+- Removed the max-width constraint from the AuthLayout component
+- Increased the maximum width of the account page container to max-w-7xl
+- Added more padding inside the card components (p-6) for better spacing
+- Ensured consistent padding across both UserProfile and WebhookSettings components
+- Improved the overall visual balance of the account page
+- Made cards full height to ensure consistent sizing between columns 

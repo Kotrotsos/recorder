@@ -974,3 +974,50 @@ The transcript summarization process in the audio recorder component follows the
    - The transcript is fetched on demand using the `fetchTranscriptionForAnalysis` function
    - This function uses the `originalId` to retrieve the associated transcript
    - Transcripts are cached in the `transcriptMap` to avoid repeated fetching 
+
+## Webhook Settings Implementation
+
+### March 14, 2025
+
+The webhook settings feature allows users to configure external integrations with the application:
+
+1. **Database Structure**:
+   - Uses a dedicated `webhook_settings` table in the Supabase database
+   - Each record contains:
+     - `id`: Unique UUID for the webhook setting
+     - `user_id`: Foreign key reference to the auth.users table
+     - `webhook_url`: The URL where webhook events will be sent
+     - `webhook_event`: The event type that triggers the webhook
+     - `created_at` and `updated_at`: Timestamps for record management
+   - Table is protected with Row Level Security (RLS) policies
+   - Users can only access, create, update, or delete their own webhook settings
+
+2. **Security Implementation**:
+   - Row Level Security (RLS) policies restrict access based on user ID
+   - Four separate policies control SELECT, INSERT, UPDATE, and DELETE operations
+   - Each policy uses `auth.uid() = user_id` to verify ownership
+   - Foreign key constraint with CASCADE deletion ensures data integrity
+   - Index on `user_id` improves query performance
+
+3. **Component Architecture**:
+   - `WebhookSettings` component handles the UI and logic for webhook configuration
+   - Uses the same styling as the UserProfile component for visual consistency
+   - Implements form validation for the webhook URL
+   - Provides visual feedback for success and error states
+   - Handles both creation and updates of webhook settings
+
+4. **User Experience Flow**:
+   - User enters a webhook URL (e.g., https://their-app.com/webhook)
+   - User selects an event type from the dropdown (transcription or analysis)
+   - User clicks "Save Settings" to store the configuration
+   - System checks if settings already exist for the user
+   - If settings exist, they are updated; otherwise, new settings are created
+   - User receives visual confirmation of success or error
+
+5. **Page Layout Strategy**:
+   - Account page uses a two-column responsive grid layout
+   - Left column contains webhook settings (order reversed on mobile)
+   - Right column contains profile settings (appears first on mobile)
+   - Both components use the same card styling for visual consistency
+   - Layout automatically stacks on mobile devices using Tailwind's responsive utilities
+   - Order is controlled with `order-1`/`order-2` classes that change at the md breakpoint 
