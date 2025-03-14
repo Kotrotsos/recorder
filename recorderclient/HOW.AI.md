@@ -2,6 +2,306 @@
 
 This file documents complex parts of the codebase and explains how they work.
 
+## Translation and Action UI Elements
+
+### March 14, 2025 (Updated)
+
+The transcript cards in the audio recorder component now feature a simplified footer with two UI elements focused on translation:
+
+1. **Language Dropdown**: A dropdown that allows users to select different languages for translation (English, Dutch, German, French, Spanish)
+2. **Translate Button**: A light-colored button that triggers the translation action
+
+These UI elements appear in two places:
+- In the footer of the main transcript card in the recorder section
+- In the footer of the modal transcript view when viewing a saved recording
+
+The implementation follows these principles:
+- Consistent footer design across all transcript cards
+- Date display on the left side of the footer
+- Translation elements on the right side of the footer
+- Compact design with appropriate spacing between elements
+- Consistent styling with the rest of the application
+
+The footer is structured as a flex container with justify-between to place elements at opposite ends:
+```jsx
+<div className="px-4 py-3 border-t border-white/10 bg-white/5 text-xs text-white/60 flex justify-between items-center">
+  {/* Date on the left */}
+  <span>{date}</span>
+  
+  {/* Translation elements on the right */}
+  <div className="flex items-center space-x-3">
+    <Select>{/* Language dropdown */}</Select>
+    <Button className="h-6 text-xs bg-white/70 text-gray-800">Translate</Button>
+  </div>
+</div>
+```
+
+Currently, the UI is only visual and does not have functional translation capabilities. The dropdown includes language options that can be expanded in the future.
+
+## Translation UI Element
+
+### March 14, 2025
+
+The translation UI element has been added to the transcript cards in the audio recorder component. This UI element consists of:
+
+1. **Label**: A "Translate:" text label
+2. **Dropdown**: A Select component from the UI library with language options
+
+The translation UI appears in two places:
+- In the main transcript card in the recorder section
+- In the modal transcript view when viewing a saved recording
+
+The implementation follows these principles:
+- Consistent styling with the rest of the application
+- Compact design to avoid taking up too much space
+- Clear labeling to indicate functionality
+- Dropdown pattern for easy selection of languages
+
+Currently, the UI is only visual and does not have functional translation capabilities. The dropdown includes English, Dutch, German, French, and Spanish language options, which can be expanded in the future.
+
+## Account Page Layout
+
+### March 14, 2024
+
+The account page uses a single-column layout to present user settings in a logical flow:
+
+1. **Profile Settings**: At the top, allowing users to manage their basic account information
+2. **Webhook Settings**: In the middle, for configuring integration webhooks
+3. **UI Settings**: At the bottom, for customizing the application appearance
+
+This layout was chosen to improve user experience by:
+- Providing a clear, sequential flow of settings from most essential to most optional
+- Eliminating the need to scan across multiple columns
+- Ensuring a consistent experience across all device sizes
+- Reducing cognitive load by presenting one settings group at a time
+
+The implementation uses a simple stacked layout with consistent spacing:
+```jsx
+<div className="max-w-3xl mx-auto w-full p-6">
+  <div className="space-y-8">
+    <UserProfile />
+    <WebhookSettings />
+    <UISettings />
+  </div>
+</div>
+```
+
+## UI Settings System
+
+### March 14, 2024 - Updated 18:00 CET
+
+The UI settings system allows users to customize the appearance of the application by switching between 'fun' (gradient) and 'flat' color modes, and selecting custom colors for each mode. The system now features real-time previewing with a save mechanism for persistence, foreground color customization, draggable color pickers, and a reset functionality.
+
+### Reset Functionality
+
+The UI settings system now includes a reset feature to restore default settings:
+
+1. **Implementation Details**:
+   - Default values are stored in a constant object at the component level
+   - The reset function updates all settings at once using the `updateUISettings` context function
+   - TypeScript typing ensures the default values match the expected types
+   - Visual feedback is provided to the user when settings are reset
+
+2. **User Experience Flow**:
+   - User clicks the "Reset to Defaults" button
+   - All color settings are immediately restored to their original values
+   - The UI updates in real-time to show the default appearance
+   - A success message informs the user that settings have been reset
+   - The user must still click "Save Changes" to persist the reset settings
+
+3. **Default Values**:
+   ```typescript
+   const defaultUISettings = {
+     ui_mode: 'fun' as 'fun' | 'flat',
+     gradient_from: '#4338ca', // indigo-900
+     gradient_via: '#6d28d9', // purple-800
+     gradient_to: '#be185d', // pink-700
+     flat_color: '#4338ca', // indigo-900
+     foreground_color: '#ffffff' // white
+   }
+   ```
+
+4. **Button Implementation**:
+   - Uses a separate button alongside the save button
+   - Includes a refresh icon for visual clarity
+   - Maintains consistent styling with other UI elements
+   - Provides immediate visual feedback when clicked
+
+### Foreground Color Implementation
+
+The UI settings system now includes foreground (text) color customization to ensure readability:
+
+1. **Database Structure**:
+   - Added `foreground_color` column to the `ui_settings` table with a default of `#ffffff` (white)
+   - Created a migration script to add the column to existing tables
+
+2. **UI Implementation**:
+   - Added a tabbed interface to separate background and text color settings
+   - Created a dedicated tab for foreground color selection
+   - Implemented a preview component that shows text against the selected background
+
+3. **Context Updates**:
+   - Added `foreground_color` to the `UISettings` interface
+   - Updated the context to track and apply foreground color changes
+   - Enhanced the `applyUISettings` function to apply text colors to elements
+
+4. **Accessibility Considerations**:
+   - The preview component helps users ensure text remains readable against their chosen background
+   - Text color changes are applied in real-time to provide immediate feedback
+   - The system prevents users from accidentally creating unreadable color combinations
+
+### Draggable Color Picker
+
+The color picker implementation has been enhanced with draggable functionality:
+
+1. **Component Integration**:
+   - Uses the `react-colorful` library which provides a draggable color picker interface
+   - Allows users to click and drag to select colors intuitively
+   - Provides both visual (picker) and text (hex input) methods for color selection
+
+2. **User Experience Improvements**:
+   - Color changes are applied immediately as the user drags the picker
+   - The preview updates in real-time to show how colors will look
+   - Hex input field allows precise color selection for advanced users
+
+### Tabbed Interface
+
+The UI settings now use a tabbed interface to organize settings:
+
+1. **Component Structure**:
+   - Uses Radix UI's Tabs component for accessible tab functionality
+   - Separates settings into "Background" and "Text Color" tabs
+   - Maintains consistent styling with the rest of the application
+
+2. **Implementation Details**:
+   - Each tab contains relevant color settings and previews
+   - The background tab shows either gradient or flat color settings based on the selected mode
+   - The text color tab shows foreground color settings with a preview against the current background
+
+### Database Structure
+
+The UI settings are stored in a dedicated `ui_settings` table in the Supabase database with the following structure:
+
+```sql
+CREATE TABLE IF NOT EXISTS public.ui_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  ui_mode TEXT NOT NULL DEFAULT 'fun', -- 'fun' or 'flat'
+  gradient_from TEXT DEFAULT '#4338ca', -- indigo-900
+  gradient_via TEXT DEFAULT '#6d28d9', -- purple-800
+  gradient_to TEXT DEFAULT '#be185d', -- pink-700
+  flat_color TEXT DEFAULT '#4338ca', -- Default flat color (indigo-900)
+  foreground_color TEXT DEFAULT '#ffffff', -- Default text color (white)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+```
+
+The table is protected with Row Level Security (RLS) policies to ensure users can only access and modify their own settings.
+
+### Real-Time Preview Implementation
+
+The UI settings system uses a two-state approach to enable real-time previews while maintaining data persistence:
+
+1. **Temporary State**: 
+   - Changes made by the user are immediately applied to the UI
+   - These changes are stored in the `uiSettings` state in the context
+   - The `updateUISettings` function allows components to make temporary changes
+   - Changes are visible immediately without requiring a save operation
+
+2. **Persistent State**:
+   - The `savedSettings` state in the context tracks the last saved configuration
+   - The `saveUISettings` function persists changes to the database
+   - Comparison between `uiSettings` and `savedSettings` determines if there are unsaved changes
+   - The `hasUnsavedChanges` boolean indicates when changes need to be saved
+
+3. **User Experience Flow**:
+   - User makes a change (switches mode or picks a color)
+   - Change is immediately visible throughout the application
+   - An "Unsaved Changes" badge appears to indicate pending changes
+   - Save button becomes enabled and changes color to amber
+   - User can continue making changes with immediate feedback
+   - When satisfied, user clicks "Save Changes" to persist to the database
+   - After saving, the badge disappears and button returns to default state
+
+### Context API Implementation
+
+The enhanced UI settings context provides several key functions:
+
+```typescript
+interface UISettingsContextType {
+  uiSettings: UISettings;                                  // Current settings (may include unsaved changes)
+  loading: boolean;                                        // Loading state
+  applyUISettings: () => void;                             // Apply current settings to the UI
+  updateUISettings: (newSettings: Partial<UISettings>) => void;  // Update settings with immediate effect
+  saveUISettings: () => Promise<{ success: boolean, message: string }>; // Save settings to database
+  hasUnsavedChanges: boolean;                              // Whether there are unsaved changes
+}
+```
+
+The context handles:
+- Loading settings from the database
+- Tracking both current and saved states
+- Applying settings to the UI in real-time
+- Determining when changes need to be saved
+- Persisting changes to the database
+
+### Dynamic Styling
+
+The UI settings are applied dynamically to the application using JavaScript:
+
+```javascript
+// Function to apply UI settings to the page
+const applyUISettings = () => {
+  if (uiSettings.ui_mode === 'fun') {
+    // Apply gradient background
+    document.querySelectorAll('.animated-gradient').forEach((el) => {
+      (el as HTMLElement).style.background = `linear-gradient(to bottom right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`
+    })
+  } else {
+    // Apply flat background
+    document.querySelectorAll('.animated-gradient').forEach((el) => {
+      (el as HTMLElement).style.background = uiSettings.flat_color
+    })
+  }
+}
+```
+
+This function is called whenever the UI settings change, ensuring the application appearance is updated in real-time.
+
+### Visual Feedback System
+
+The UI provides several visual cues to help users understand the state of their settings:
+
+1. **Unsaved Changes Badge**:
+   - Appears when there are unsaved changes
+   - Uses amber/gold color scheme to draw attention
+   - Positioned next to the card title for visibility
+
+2. **Dynamic Save Button**:
+   - Changes text based on state: "No Changes to Save" → "Save Changes" → "Saving..."
+   - Changes color when there are unsaved changes (amber highlight)
+   - Disabled when there are no changes to save or during saving operation
+   - Provides clear feedback on the current state
+
+3. **Preview Panel**:
+   - Shows a live preview of the current gradient or flat color
+   - Updates in real-time as colors are changed
+   - Helps users visualize their selections before applying them globally
+
+4. **Instructional Text**:
+   - Footer text explains that "Changes are applied immediately. Click Save to make them permanent."
+   - Helps users understand the two-stage process (preview then save)
+
+### Color Picker Implementation
+
+The color picker implementation uses:
+1. **react-colorful**: For the visual color picker component
+2. **Popover**: For the color picker dropdown
+3. **Input**: For manual hex color entry
+
+The component allows users to select colors either through the visual picker or by entering hex values directly. All changes are immediately reflected in the UI.
+
 ## Pricing Page Layout
 
 ### March 13, 2025

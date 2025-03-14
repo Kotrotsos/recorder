@@ -1876,8 +1876,8 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                   </Button>
                   
                   {/* Display transcript in the recorder card */}
-                  <div className="mt-4 p-4 bg-white/10 rounded-lg border border-white/20 text-sm text-white/90">
-                    <h4 className="font-medium mb-2 text-white">Transcript</h4>
+                  <div className="mt-4 p-4 pb-0 bg-white/10 rounded-lg border border-white/20 text-sm text-white/90">
+                    <h4 className="font-medium text-white mb-2">Transcript</h4>
                     <div className="whitespace-pre-line max-h-60 overflow-y-auto">
                       {aiProcessing ? (
                         <div className="flex items-center justify-center py-4">
@@ -1886,6 +1886,39 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                       ) : (
                         getTranscriptContent(lastTranscriptionNumericId || 0)
                       )}
+                    </div>
+                    
+                    <div className="px-4 py-3 mt-4 border-t border-white/10 bg-white/5 text-xs text-white/60 flex justify-between items-center -mx-4 rounded-b-lg">
+                      <span>{new Date().toLocaleDateString('en-US', { 
+                        year: 'numeric',
+                        month: 'short', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}</span>
+                      
+                      <div className="flex items-center space-x-3">
+                        <Select defaultValue="english">
+                          <SelectTrigger className="h-6 w-24 text-xs bg-white/10 border-white/20 [&_svg]:text-white">
+                            <SelectValue placeholder="English" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="english">English</SelectItem>
+                            <SelectItem value="dutch">Dutch</SelectItem>
+                            <SelectItem value="german">German</SelectItem>
+                            <SelectItem value="french">French</SelectItem>
+                            <SelectItem value="spanish">Spanish</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-6 text-xs bg-white/70 text-gray-800 hover:bg-white/90 border-white/20"
+                        >
+                          Translate
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2045,7 +2078,8 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                    ((selectedCard.originalId) || 
                     (originalIdMap[selectedCard.id])) && (
                     <>
-                      <div className="flex items-center p-2 hover:bg-white/5 rounded-lg cursor-pointer"
+                      <div 
+                        className="flex items-center cursor-pointer p-2 hover:bg-white/5 rounded-md transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
                           
@@ -2110,7 +2144,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
           </div>
           
           {selectedCard && (
-            <div className="px-4 py-3 border-t border-white/10 bg-white/5 text-xs text-white/60 flex justify-between">
+            <div className="px-4 py-3 border-t border-white/10 bg-white/5 text-xs text-white/60 flex justify-between items-center">
               <span>{new Date(selectedCard.date || Date.now()).toLocaleDateString('en-US', { 
                 year: 'numeric',
                 month: 'short', 
@@ -2118,7 +2152,29 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                 hour: '2-digit',
                 minute: '2-digit'
               })}</span>
-              <span>{selectedCard.type === "summarize" ? "Summary" : "Analysis"}</span>
+              
+              <div className="flex items-center space-x-3">
+                <Select defaultValue="english">
+                  <SelectTrigger className="h-6 w-24 text-xs bg-white/10 border-white/20 [&_svg]:text-white">
+                    <SelectValue placeholder="English" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="english">English</SelectItem>
+                    <SelectItem value="dutch">Dutch</SelectItem>
+                    <SelectItem value="german">German</SelectItem>
+                    <SelectItem value="french">French</SelectItem>
+                    <SelectItem value="spanish">Spanish</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-6 text-xs bg-white/70 text-gray-800 hover:bg-white/90 border-white/20"
+                >
+                  Translate
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
