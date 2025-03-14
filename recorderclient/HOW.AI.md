@@ -13,10 +13,11 @@ The pricing page uses a responsive layout that adapts to different screen sizes:
    - Each pricing card takes full width on mobile.
 
 2. **Desktop View**: On larger screens (md breakpoint and above), the pricing columns display side by side.
-   - The Free plan uses `max-w-md` to maintain a standard width.
-   - The Lifetime Supporter plan uses `max-w-sm` to make it slightly smaller than the Free plan.
+   - Both pricing cards use `md:w-1/2` to ensure they have identical widths.
+   - This creates a balanced, symmetrical layout that improves visual consistency.
 
 3. **Visual Differentiation**:
+   - Both plans use the same background opacity (`bg-white/15`) for visual consistency.
    - The Free plan uses a pink/purple color scheme.
    - The Lifetime Supporter plan uses an amber/yellow color scheme to stand out.
    - Both plans have subtle animations applied through CSS keyframes defined in the useEffect hook.
@@ -25,6 +26,54 @@ The pricing page uses a responsive layout that adapts to different screen sizes:
    - The page uses animated gradient backgrounds with floating "blob" elements.
    - These animations are defined in a style tag injected via useEffect to ensure they only run on the client side.
    - The animations include gradient shifts and floating movements to create a dynamic, engaging background.
+
+### March 14, 2025 - Update
+
+The pricing cards were updated to ensure consistent sizing and visual balance:
+
+1. **Equal Width Cards**:
+   - Changed from using `max-w-md` and `max-w-sm` to using `md:w-1/2` for both cards
+   - This ensures both cards take up exactly half the container width on desktop
+   - Creates a more balanced, symmetrical layout
+
+2. **Consistent Background Opacity**:
+   - Both cards now use `bg-white/15` for their background
+   - Previously, the Free tier used `bg-white/10` (more transparent)
+   - The consistent opacity creates a more cohesive visual appearance
+
+3. **Responsive Behavior**:
+   - On mobile, cards still stack vertically and take full width
+   - On desktop (md breakpoint and above), cards display side by side with equal width
+   - Height is automatically balanced using the `h-full` class on both cards
+
+### March 14, 2025 - Mobile Layout Enhancement
+
+The mobile layout was improved with the following changes:
+
+1. **Mobile Padding**:
+   - Added 5px padding to the container on mobile devices using `px-[5px]`
+   - Prevents content from touching the edges of the screen on small devices
+   - Improves readability and visual appeal on mobile
+   - Used responsive utility `sm:px-0` to remove padding on larger screens
+   - This maintains the original layout on desktop while improving mobile experience
+
+### March 14, 2025 - Visual Contrast Enhancement
+
+The pricing cards were updated to improve visual contrast:
+
+1. **Free Tier Background Darkening**:
+   - Changed the Free tier background from `bg-white/15` to `bg-white/20`
+   - This makes the Free tier card slightly darker than the Lifetime Supporter card
+   - Creates better visual distinction between the Free tier and the background
+   - Improves readability of the white text on the darker background
+   - Maintains the overall design language while enhancing visual hierarchy
+
+2. **Visual Differentiation Strategy**:
+   - Free tier now uses a darker background (`bg-white/20`) than the Lifetime Supporter tier (`bg-white/15`)
+   - This subtle difference helps distinguish the two tiers visually
+   - The Free tier's pink/purple accent colors remain unchanged
+   - The Lifetime Supporter tier's amber/yellow accent colors remain unchanged
+   - Both cards maintain the same size and shape for layout consistency
 
 ## Supporter Messaging Strategy
 

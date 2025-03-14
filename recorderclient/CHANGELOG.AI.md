@@ -493,3 +493,35 @@ This file documents all the changes made by AI assistance.
 - Added Suspense boundary around LoginForm component that uses useSearchParams()
 - Added appropriate loading fallback UI for both forms
 - Resolved "useSearchParams() should be wrapped in a suspense boundary" errors during build 
+
+## March 14, 2025 - 10:30 CET
+
+### Fixed
+- Made pricing cards the same width by replacing `max-w-md` and `max-w-sm` with `md:w-1/2` for both cards
+- Darkened the Free tier background by changing `bg-white/10` to `bg-white/15` to match the Lifetime Supporter tier
+- Improved responsive layout consistency between pricing tiers
+- Ensured both pricing cards maintain the same height and width on all screen sizes 
+
+## March 14, 2025 - 11:00 CET
+
+### Fixed
+- Removed the development debug panel from the pricing page
+- The panel previously displayed authentication status, user ID, and supporter status
+- This improves the UI by removing developer-only information that was visible in development mode
+- No functionality was affected as this was only a diagnostic display element 
+
+## March 14, 2025 - 11:30 CET
+
+### Fixed
+- Added 5px padding to the mobile view of the pricing page
+- Prevents content from touching the edges of the screen on small devices
+- Applied padding only to mobile view using `px-[5px] sm:px-0` to maintain original layout on larger screens
+- Improves readability and visual appeal on mobile devices 
+
+## March 14, 2025 - 12:00 CET
+
+### Fixed
+- Made the Free tier background darker by changing opacity from `bg-white/15` to `bg-white/20`
+- This creates better visual contrast between the Free tier and the background
+- Maintains consistent styling with the overall design language
+- Improves readability of the pricing card content 

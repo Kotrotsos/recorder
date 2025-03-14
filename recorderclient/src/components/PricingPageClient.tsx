@@ -202,7 +202,7 @@ export default function PricingPageClient() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-700 animated-gradient">
+    <div className="min-h-screen flex flex-col relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-700 animated-gradient px-[5px] sm:px-0">
       {/* Fancy background elements with subtle animations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-pink-500 rounded-full opacity-20 blur-3xl blob1"></div>
@@ -261,14 +261,7 @@ export default function PricingPageClient() {
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 py-12">
         {/* Debug info for development - remove in production */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="fixed top-20 right-4 z-50 bg-black/80 text-white p-2 rounded text-xs max-w-xs">
-            <div><strong>Auth Status:</strong> {authLoading ? 'Loading...' : isAuthenticated ? 'Logged in' : 'Not logged in'}</div>
-            {user && <div><strong>User ID:</strong> {user.id.substring(0, 8)}...</div>}
-            <div><strong>Is Supporter:</strong> {isSupporter ? 'Yes' : 'No'}</div>
-            {authError && <div className="text-red-400"><strong>Error:</strong> {authError}</div>}
-          </div>
-        )}
+        {/* Removing debug panel as requested */}
         
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
@@ -282,8 +275,8 @@ export default function PricingPageClient() {
         {/* Pricing cards */}
         <div className="w-full max-w-4xl flex flex-col md:flex-row gap-6 justify-center">
           {/* Free plan */}
-          <div className="w-full max-w-md">
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20 relative overflow-hidden h-full">
+          <div className="w-full md:w-1/2">
+            <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/20 relative overflow-hidden h-full">
               {/* Limited time badge */}
               <div className="absolute top-0 right-0">
                 <div className="bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs font-bold px-4 py-1 rounded-bl-lg pulse-slow">
@@ -345,7 +338,7 @@ export default function PricingPageClient() {
           </div>
 
           {/* Lifetime Supporter plan */}
-          <div className="w-full max-w-sm">
+          <div className="w-full md:w-1/2">
             <div className="bg-white/15 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/30 relative overflow-hidden h-full">
               {/* Special badge */}
               <div className="absolute top-0 right-0">
