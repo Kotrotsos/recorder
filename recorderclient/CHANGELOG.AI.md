@@ -551,3 +551,15 @@ This file documents all the changes made by AI assistance.
 - Ensured consistent padding across both UserProfile and WebhookSettings components
 - Improved the overall visual balance of the account page
 - Made cards full height to ensure consistent sizing between columns 
+
+## March 14, 2025 - 15:31 CET
+
+### Added
+- Implemented webhook notification functionality for transcriptions and analyses
+- Created a new webhook service in `src/lib/webhook.ts` to handle sending webhook notifications
+- Updated `createTranscription` and `createAnalysis` functions in `src/lib/db.ts` to trigger webhook notifications
+- Updated the same functions in `src/hooks/useDatabase.ts` to maintain consistency
+- Added proper error handling for webhook notifications
+- Implemented the webhook payload format with transcript, document, and user_id
+- Added event-specific headers to webhook requests
+- Ensured webhook notifications are non-blocking by using .catch() instead of await 

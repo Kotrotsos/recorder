@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/database.types';
+import { sendWebhookNotification } from '@/lib/webhook';
 
 /**
  * Custom hook for interacting with the database
@@ -251,6 +252,17 @@ export function useDatabase() {
         throw new Error(`Error creating transcription: ${error.message}`);
       }
       
+      // Send webhook notification if configured
+      if (data) {
+        // Don't await this to avoid blocking the function
+        sendWebhookNotification(
+          userId,
+          'transcription_created',
+          data,
+          {} // Empty document for transcription_created events
+        ).catch(err => console.error('Error sending webhook notification:', err));
+      }
+      
       router.refresh();
       return data;
     } catch (err: any) {
@@ -443,6 +455,35 @@ export function useDatabase() {
       
       if (error) {
         throw new Error(`Error creating analysis: ${error.message}`);
+      }
+      
+      // Send webhook notification if configured
+      if (data) {
+        // Get the associated transcription if available
+        let transcript = {};
+        if (transcriptionId) {
+          try {
+            const { data: transcriptionData } = await supabase
+              .from('transcriptions')
+              .select('*')
+              .eq('id', transcriptionId)
+              .single();
+            
+            if (transcriptionData) {
+              transcript = transcriptionData;
+            }
+          } catch (err) {
+            console.error('Error fetching transcription for webhook:', err);
+          }
+        }
+        
+        // Don't await this to avoid blocking the function
+        sendWebhookNotification(
+          userId,
+          'analysis_created',
+          transcript,
+          data
+        ).catch(err => console.error('Error sending webhook notification:', err));
       }
       
       router.refresh();

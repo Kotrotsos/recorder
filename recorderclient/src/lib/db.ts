@@ -1,5 +1,6 @@
 import { createClient } from './supabase-server';
 import { Database } from '@/types/database.types';
+import { sendWebhookNotification } from './webhook';
 
 /**
  * Database utility functions for interacting with Supabase
@@ -119,6 +120,17 @@ export async function createTranscription(userId: string, fileId: string, title:
     throw new Error(`Error creating transcription: ${error.message}`);
   }
   
+  // Send webhook notification if configured
+  if (data) {
+    // Don't await this to avoid blocking the function
+    sendWebhookNotification(
+      userId,
+      'transcription_created',
+      data,
+      {} // Empty document for transcription_created events
+    ).catch(err => console.error('Error sending webhook notification:', err));
+  }
+  
   return data;
 }
 
@@ -220,6 +232,35 @@ export async function createAnalysis(userId: string, transcriptionId: string | n
   
   if (error) {
     throw new Error(`Error creating analysis: ${error.message}`);
+  }
+  
+  // Send webhook notification if configured
+  if (data) {
+    // Get the associated transcription if available
+    let transcript = {};
+    if (transcriptionId) {
+      try {
+        const { data: transcriptionData } = await supabase
+          .from('transcriptions')
+          .select('*')
+          .eq('id', transcriptionId)
+          .single();
+        
+        if (transcriptionData) {
+          transcript = transcriptionData;
+        }
+      } catch (err) {
+        console.error('Error fetching transcription for webhook:', err);
+      }
+    }
+    
+    // Don't await this to avoid blocking the function
+    sendWebhookNotification(
+      userId,
+      'analysis_created',
+      transcript,
+      data
+    ).catch(err => console.error('Error sending webhook notification:', err));
   }
   
   return data;

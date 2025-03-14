@@ -975,6 +975,54 @@ The transcript summarization process in the audio recorder component follows the
    - This function uses the `originalId` to retrieve the associated transcript
    - Transcripts are cached in the `transcriptMap` to avoid repeated fetching 
 
+## Webhook Notification System
+
+### March 14, 2025
+
+The webhook notification system allows users to receive real-time notifications when transcriptions or analyses are created:
+
+1. **Webhook Configuration**:
+   - Users configure webhook settings in the account page
+   - Settings include a webhook URL and event type (transcription_created or analysis_created)
+   - Settings are stored in the `webhook_settings` table in the database
+   - Each user can have multiple webhook configurations for different events
+
+2. **Notification Triggers**:
+   - Webhooks are triggered automatically when:
+     - A new transcription is created (`transcription_created` event)
+     - A new analysis is created (`analysis_created` event)
+   - Triggers are implemented in both `src/lib/db.ts` and `src/hooks/useDatabase.ts`
+   - Notifications are sent asynchronously to avoid blocking the main operation
+
+3. **Payload Structure**:
+   - All webhook notifications use a consistent JSON payload:
+   ```json
+   {
+     "transcript": { /* transcription data object */ },
+     "document": { /* analysis data object or empty for transcription events */ },
+     "user_id": "user-uuid"
+   }
+   ```
+   - For `transcription_created` events, the `document` field is an empty object
+   - For `analysis_created` events, both `transcript` and `document` contain data
+
+4. **HTTP Request Details**:
+   - Webhooks are sent as HTTP POST requests to the configured URL
+   - Content-Type is set to `application/json`
+   - A custom header `X-Webhook-Event` is included with the event type
+   - Responses are logged but not retried on failure
+
+5. **Error Handling**:
+   - Webhook errors are caught and logged but don't affect the main operation
+   - If a webhook URL is unreachable or returns an error, it's logged but doesn't block the user
+   - Webhook sending is wrapped in try/catch blocks to prevent failures from affecting the application
+
+6. **Implementation Details**:
+   - The core webhook functionality is in `src/lib/webhook.ts`
+   - The `sendWebhookNotification` function handles all webhook sending logic
+   - Webhook calls are non-blocking (don't use await at the call site)
+   - Database queries check if a user has configured webhooks before attempting to send
+
 ## Webhook Settings Implementation
 
 ### March 14, 2025
