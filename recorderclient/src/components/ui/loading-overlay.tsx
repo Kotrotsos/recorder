@@ -1,70 +1,32 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState, CSSProperties } from 'react'
-import { useLoading } from '@/contexts/loading-context'
-import { LoadingSpinner } from './loading-spinner'
+import React, { ReactNode } from 'react';
+import { useLoading } from '@/contexts/loading-context';
+import { cn } from '@/lib/utils';
 
 interface LoadingOverlayProps {
-  children: React.ReactNode
-  fullHeight?: boolean
+  children: ReactNode;
+  fullHeight?: boolean;
 }
 
-export function LoadingOverlay({ 
-  children,
-  fullHeight = false
-}: LoadingOverlayProps) {
-  const { isLoading } = useLoading()
-  // Use state to ensure consistent rendering between server and client
-  const [isMounted, setIsMounted] = useState(false)
-  
-  // Only enable client-side features after hydration
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
-  
-  // Base styles that will be consistently rendered on both server and client
-  const overlayStyle: CSSProperties = {
-    position: 'absolute',
-    inset: '0px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 50,
-    background: 'linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-    opacity: 1,
-    transition: 'opacity 0.3s ease-in-out',
-    backdropFilter: isMounted ? 'blur(8px)' : 'none', // Only apply blur after client-side mount
-  }
-  
-  // Content styles
-  const contentStyle: CSSProperties = { 
-    opacity: isLoading ? 0 : 1, 
-    transition: 'opacity 0.3s ease-in-out',
-    visibility: isLoading ? 'hidden' : 'visible' as const,
-  }
-  
+export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ 
+  children, 
+  fullHeight = false 
+}) => {
+  const { isLoading } = useLoading();
+
   return (
-    <div style={{ position: 'relative', height: fullHeight ? '100%' : 'auto' }}>
-      {/* Loading overlay */}
+    <div className={cn("relative", fullHeight && "h-full")}>
+      {children}
+      
       {isLoading && (
-        <div style={overlayStyle}>
-          <div style={{ textAlign: 'center' }}>
-            <LoadingSpinner size="large" className="text-white" />
-            <p style={{ 
-              marginTop: '1rem', 
-              fontSize: '0.875rem', 
-              color: 'rgba(255, 255, 255, 0.7)'
-            }}>
-              Loading content...
-            </p>
+        <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+            <p className="text-sm text-muted-foreground">Loading...</p>
           </div>
         </div>
       )}
-      
-      {/* Content area - hidden while loading */}
-      <div style={contentStyle}>
-        {children}
-      </div>
     </div>
-  )
-} 
+  );
+}; 

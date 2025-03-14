@@ -2460,585 +2460,91 @@ const LoadingOverlay = ({ children, fullHeight = false }) => {
 
 This system helps prevent the UI flashing with incorrect styles during navigation and provides visual feedback to users during loading periods. The safety mechanisms ensure users are never stuck on a loading screen, even if there are issues with style application.
 
-## UI Settings Context
+## Loading State Management System
 
-### Maximum Update Depth Fix
+### March 14, 2025
 
-The UI settings page was experiencing a "Maximum update depth exceeded" error. This error occurs when a component calls setState inside useEffect, but the useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+The application now includes a global loading state management system implemented through a React context provider. This system allows for consistent loading indicators to be displayed across the application.
 
-#### The Problem
+### Implementation Details
 
-The issue was caused by two main factors:
+1. **Loading Context Provider**:
+   - Implemented as a React context that manages loading state globally
+   - Provides a boolean `isLoading` state and a `setIsLoading` function to update it
+   - Any component in the application can access this state using the `useLoading` hook
 
-1. In the UI settings context, we were using `JSON.stringify(uiSettings)` in the dependency array of useEffect, which creates a new string on every render, causing the effect to run on every render:
-
-```typescript
-useEffect(() => {
-  if (!loading) {
-    const timeoutId = setTimeout(() => {
-      applyUISettings()
-    }, 100)
-    
-    return () => clearTimeout(timeoutId)
-  }
-}, [loading, JSON.stringify(uiSettings)]) // This causes the effect to run on every render
-```
-
-2. In the UI settings component, we had several functions that were being recreated on every render, and we were using them directly in the JSX:
-
-```jsx
-<div className="h-full" style={localUIMode === 'fun' ? generateGradientPreview() : generateFlatPreview()}></div>
-```
-
-These issues combined to create an infinite loop of updates.
-
-#### The Solution
-
-The fix involved several key changes:
-
-1. **Using a Ref to Track Applied Settings**: Instead of using `JSON.stringify` in the dependency array, we now use a ref to track the last applied settings:
-
-```typescript
-const appliedRef = useRef<string>('')
-
-useEffect(() => {
-  if (!loading) {
-    // Create a stringified version of the current settings
-    const settingsKey = JSON.stringify(uiSettings)
-    
-    // Only apply if settings have changed or haven't been applied yet
-    if (settingsKey !== appliedRef.current) {
-      const timeoutId = setTimeout(() => {
-        applyUISettings()
-        appliedRef.current = settingsKey // Update the ref after applying
-      }, 100)
-      
-      return () => clearTimeout(timeoutId)
-    }
-  }
-}, [loading, uiSettings]) // Use the actual uiSettings object, but control application with the ref
-```
-
-2. **Optimizing the UI Settings Component**:
-   - Added a condition to only update local state if it's different from context
-   - Memoized the preview styles to prevent unnecessary re-renders
-   - Used the memoized styles in the JSX instead of calling functions directly
-
-```typescript
-// Memoize preview styles to prevent unnecessary re-renders
-const gradientPreviewStyle = React.useMemo(() => generateGradientPreview(), [
-  uiSettings.gradient_from,
-  uiSettings.gradient_via,
-  uiSettings.gradient_to
-])
-
-const flatPreviewStyle = React.useMemo(() => generateFlatPreview(), [
-  uiSettings.flat_color
-])
-
-// In JSX:
-<div className="h-full" style={localUIMode === 'fun' ? gradientPreviewStyle : flatPreviewStyle}></div>
-```
-
-These changes break the infinite update cycle by ensuring that:
-1. The useEffect in the context only runs when the settings actually change
-2. The UI settings component doesn't cause unnecessary re-renders
-3. Functions that generate styles are memoized to prevent recreation on every render
-
-### Switch Component Infinite Loop Fix
-
-The UI settings page was experiencing a "Maximum update depth exceeded" error due to an infinite loop between the Switch component and the UI settings context. This error occurs when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate, causing React to limit the number of nested updates to prevent infinite loops.
-
-#### The Problem
-
-The issue was caused by a circular dependency between:
-1. The Switch component's `checked` prop reading directly from the UI settings context
-2. The `onCheckedChange` handler updating the context
-3. The context update triggering a re-render of the Switch component
-4. The re-render causing another check of the `checked` prop
-5. This cycle repeating indefinitely
-
-```jsx
-<Switch 
-  id="ui-mode" 
-  checked={uiSettings.ui_mode === 'fun'}
-  onCheckedChange={handleUIModeChange}
-/>
-```
-
-When the Switch was toggled, it would update the context, which would cause a re-render, which would check the `checked` prop again, potentially triggering another update if there were any inconsistencies.
-
-#### The Solution
-
-The fix involved breaking this circular dependency by:
-
-1. **Adding Local State**: We created a local state variable to track the UI mode:
    ```typescript
-   const [localUIMode, setLocalUIMode] = useState<'fun' | 'flat'>(uiSettings.ui_mode)
-   ```
-
-2. **Synchronizing with Context**: We used useEffect to keep the local state in sync with the context:
-   ```typescript
-   useEffect(() => {
-     setLocalUIMode(uiSettings.ui_mode)
-   }, [uiSettings.ui_mode])
-   ```
-
-3. **Updating the Switch Component**: We modified the Switch to use the local state instead of reading directly from context:
-   ```jsx
-   <Switch 
-     id="ui-mode" 
-     checked={localUIMode === 'fun'}
-     onCheckedChange={handleUIModeChange}
-   />
-   ```
-
-4. **Modifying the Change Handler**: We updated the handler to set local state first, then update context:
-   ```typescript
-   const handleUIModeChange = (isChecked: boolean) => {
-     const newMode = isChecked ? 'fun' : 'flat'
-     setLocalUIMode(newMode) // Update local state first
-     updateUISettings({ ui_mode: newMode }) // Then update context
-   }
-   ```
-
-5. **Improving Context Dependencies**: We modified the useEffect in the context to use JSON.stringify to prevent reference equality issues:
-   ```typescript
-   useEffect(() => {
-     // ...
-   }, [loading, JSON.stringify(uiSettings)])
-   ```
-
-This approach breaks the circular dependency by ensuring that the Switch component's state is managed locally first, then synchronized with the global context. This prevents the infinite loop of updates that was causing the error.
-
-### String Method TypeScript Error Fix
-
-The UI settings context was experiencing a TypeScript error: "This expression is not callable. Type 'String' has no call signatures." This error occurred because TypeScript was treating string properties as String objects rather than primitive strings.
-
-#### The Problem
-
-When accessing string properties like `uiSettings.gradient_from`, TypeScript was inferring them as `String` objects rather than primitive `string` types. This caused issues when trying to use string methods like `startsWith()` or `includes()`.
-
-The error message in the console showed:
-```
-Error applying UI settings: TypeError: uiSettings.gradient_fromuiSettings.gradient_viauiSettings.gradient_to is not a function
-```
-
-This indicated that the code was trying to treat the concatenation of these properties as a function, which suggests a syntax error in how the gradient was being constructed.
-
-#### The Solution
-
-The fix involved several key changes:
-
-1. **Explicit String Conversion**: We used the `String()` constructor to explicitly convert all color values to primitive strings:
-   ```typescript
-   const from = String(uiSettings.gradient_from || '');
-   ```
-
-2. **Null/Undefined Handling**: We added fallbacks for all values to prevent errors with null or undefined:
-   ```typescript
-   String(uiSettings.flat_color || '');
-   ```
-
-3. **Improved Pathname Handling**: We used a more robust approach for checking the pathname:
-   ```typescript
-   const pathString = pathname || '';
-   const isAccountPage = typeof pathString === 'string' && pathString.indexOf('/account') >= 0;
-   ```
-
-4. **Consistent Variable Usage**: We used consistent variable naming and element references:
-   ```typescript
-   const containerElement = accountContainer as HTMLElement;
-   containerElement.style.background = String(uiSettings.flat_color || '');
-   ```
-
-5. **Removed Unnecessary Type Guards**: We replaced complex type guards with direct string conversion, which is more reliable:
-   ```typescript
-   // Before:
-   if (isValidGradient(uiSettings.gradient_from) && isValidGradient(uiSettings.gradient_via) && isValidGradient(uiSettings.gradient_to)) {
-     // ...
-   }
+   // The core of the loading context
+   const LoadingContext = createContext<LoadingContextType>({
+     isLoading: false,
+     setIsLoading: () => {},
+   });
    
-   // After:
-   const from = String(uiSettings.gradient_from || '');
-   const via = String(uiSettings.gradient_via || '');
-   const to = String(uiSettings.gradient_to || '');
+   export const useLoading = () => useContext(LoadingContext);
    ```
 
-These changes ensure that all string values are properly handled, preventing TypeScript errors and runtime issues with string methods.
+2. **Loading Overlay Component**:
+   - Wraps children components and displays a loading indicator when loading state is active
+   - Creates a semi-transparent overlay with a centered loading spinner
+   - Uses backdrop blur for a modern visual effect
+   - Supports a `fullHeight` prop to extend to full container height when needed
 
-### Infinite Loop Fix
-
-The UI settings context was also experiencing an infinite loop issue where the component would continuously re-render. This was caused by the dependency array in the useEffect hook watching too many individual properties.
-
-#### The Problem
-
-The original code had a useEffect hook with a dependency array that included all individual gradient properties:
-
-```typescript
-useEffect(() => {
-  if (!loading) {
-    applyUISettings()
-  }
-}, [loading, uiSettings.ui_mode, uiSettings.gradient_from, uiSettings.gradient_via, uiSettings.gradient_to, uiSettings.flat_color, uiSettings.foreground_color])
-```
-
-This caused the effect to run whenever any of these properties changed, which then triggered state updates, causing more property changes and creating an infinite loop.
-
-#### The Solution
-
-The fix involved simplifying the dependency array to only watch the entire settings object:
-
-```typescript
-useEffect(() => {
-  if (!loading) {
-    // Use a ref to track if the effect is already running
-    const timeoutId = setTimeout(() => {
-      applyUISettings()
-    }, 100) // Add a small delay to batch potential rapid changes
-    
-    return () => clearTimeout(timeoutId)
-  }
-}, [loading, uiSettings]) // Only depend on the loading state and the entire settings object
-```
-
-Additionally, we added debouncing with setTimeout to batch rapid changes and included a cleanup function to prevent memory leaks.
-
-These changes prevent the infinite loop by ensuring that the effect doesn't trigger additional renders that would cause it to run again immediately.
-
-### Critical setState in Function Body Fix
-
-The UI settings context was experiencing a "Maximum update depth exceeded" error due to a setState call directly in the function body of `applyUISettings`. This error occurs when a component calls setState inside useEffect, but the setState call triggers another render, which then triggers the useEffect again, creating an infinite loop.
-
-#### The Problem
-
-The issue was caused by the following code in the `applyUISettings` function:
-
-```typescript
-const applyUISettings = () => {
-  // Don't apply if we're still loading
-  if (loading) return
-  
-  // Ensure this runs in the client
-  if (typeof window === 'undefined') return
-
-  // Update the last applied timestamp to track when styles were most recently applied
-  setLastApplied(Date.now())  // This setState call was causing the infinite loop
-  
-  // Wait for next tick to ensure DOM is ready
-  setTimeout(() => {
-    // ...
-  }, 0)
-}
-```
-
-Since `applyUISettings` was called from within a useEffect that depended on `lastApplied`, this created an infinite loop:
-1. useEffect runs and calls `applyUISettings`
-2. `applyUISettings` calls `setLastApplied`
-3. State update triggers a re-render
-4. Re-render causes useEffect to run again
-5. The cycle repeats indefinitely
-
-#### The Solution
-
-The fix involved two key changes:
-
-1. **Moving the setState call inside setTimeout**: This prevents the state update from happening synchronously during the function execution, breaking the immediate re-render cycle.
-
-```typescript
-const applyUISettings = () => {
-  // Don't apply if we're still loading
-  if (loading) return
-  
-  // Ensure this runs in the client
-  if (typeof window === 'undefined') return
-
-  // Wait for next tick to ensure DOM is ready
-  setTimeout(() => {
-    try {
-      // Update the last applied timestamp to track when styles were most recently applied
-      const now = Date.now()
-      setLastApplied(now)
-      lastAppliedTimeRef.current = now
-      
-      // ... rest of the function
-    } catch (error) {
-      console.error('Error applying UI settings:', error)
-    }
-  }, 0)
-}
-```
-
-2. **Using a ref to track the last applied time**: This allows us to access the most recent timestamp without depending on the state value in useEffect.
-
-```typescript
-const lastAppliedTimeRef = useRef<number>(0)
-
-// In the periodic check useEffect:
-useEffect(() => {
-  // Only run this on the account page and when not loading
-  const isAccountPage = pathname && typeof pathname === 'string' && pathname.indexOf('/account') >= 0
-  if (!isAccountPage || loading) return
-
-  // Set up a check every 500ms for the first 3 seconds
-  const intervalId = setInterval(() => {
-    // Only reapply if it's been more than 300ms since the last application
-    if (Date.now() - lastAppliedTimeRef.current > 300) {
-      applyUISettings()
-    }
-  }, 500)
-
-  // ... rest of the useEffect
-}, [pathname, loading]) // Removed lastApplied from dependencies
-```
-
-These changes break the infinite loop by:
-1. Ensuring that state updates don't happen synchronously during function execution
-2. Using refs instead of state for values that need to be accessed but shouldn't trigger re-renders
-3. Removing state dependencies from useEffect when they would cause infinite loops
-
-### Maximum Update Depth Fix
-
-The UI settings page was experiencing a "Maximum update depth exceeded" error. This error occurs when a component calls setState inside useEffect, but the useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
-
-#### The Problem
-
-The issue was caused by two main factors:
-
-1. In the UI settings context, we were using `JSON.stringify(uiSettings)` in the dependency array of useEffect, which creates a new string on every render, causing the effect to run on every render:
-
-```typescript
-useEffect(() => {
-  if (!loading) {
-    const timeoutId = setTimeout(() => {
-      applyUISettings()
-    }, 100)
-    
-    return () => clearTimeout(timeoutId)
-  }
-}, [loading, JSON.stringify(uiSettings)]) // This causes the effect to run on every render
-```
-
-2. In the UI settings component, we had several functions that were being recreated on every render, and we were using them directly in the JSX:
-
-```jsx
-<div className="h-full" style={localUIMode === 'fun' ? generateGradientPreview() : generateFlatPreview()}></div>
-```
-
-These issues combined to create an infinite loop of updates.
-
-#### The Solution
-
-The fix involved several key changes:
-
-1. **Using a Ref to Track Applied Settings**: Instead of using `JSON.stringify` in the dependency array, we now use a ref to track the last applied settings:
-
-```typescript
-const appliedRef = useRef<string>('')
-
-useEffect(() => {
-  if (!loading) {
-    // Create a stringified version of the current settings
-    const settingsKey = JSON.stringify(uiSettings)
-    
-    // Only apply if settings have changed or haven't been applied yet
-    if (settingsKey !== appliedRef.current) {
-      const timeoutId = setTimeout(() => {
-        applyUISettings()
-        appliedRef.current = settingsKey // Update the ref after applying
-      }, 100)
-      
-      return () => clearTimeout(timeoutId)
-    }
-  }
-}, [loading, uiSettings]) // Use the actual uiSettings object, but control application with the ref
-```
-
-2. **Optimizing the UI Settings Component**:
-   - Added a condition to only update local state if it's different from context
-   - Memoized the preview styles to prevent unnecessary re-renders
-   - Used the memoized styles in the JSX instead of calling functions directly
-
-```typescript
-// Memoize preview styles to prevent unnecessary re-renders
-const gradientPreviewStyle = React.useMemo(() => generateGradientPreview(), [
-  uiSettings.gradient_from,
-  uiSettings.gradient_via,
-  uiSettings.gradient_to
-])
-
-const flatPreviewStyle = React.useMemo(() => generateFlatPreview(), [
-  uiSettings.flat_color
-])
-
-// In JSX:
-<div className="h-full" style={localUIMode === 'fun' ? gradientPreviewStyle : flatPreviewStyle}></div>
-```
-
-These changes break the infinite update cycle by ensuring that:
-1. The useEffect in the context only runs when the settings actually change
-2. The UI settings component doesn't cause unnecessary re-renders
-3. Functions that generate styles are memoized to prevent recreation on every render
-
-### Switch Component Infinite Loop Fix
-
-The UI settings page was experiencing a "Maximum update depth exceeded" error due to an infinite loop between the Switch component and the UI settings context. This error occurs when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate, causing React to limit the number of nested updates to prevent infinite loops.
-
-#### The Problem
-
-The issue was caused by a circular dependency between:
-1. The Switch component's `checked` prop reading directly from the UI settings context
-2. The `onCheckedChange` handler updating the context
-3. The context update triggering a re-render of the Switch component
-4. The re-render causing another check of the `checked` prop
-5. This cycle repeating indefinitely
-
-```jsx
-<Switch 
-  id="ui-mode" 
-  checked={uiSettings.ui_mode === 'fun'}
-  onCheckedChange={handleUIModeChange}
-/>
-```
-
-When the Switch was toggled, it would update the context, which would cause a re-render, which would check the `checked` prop again, potentially triggering another update if there were any inconsistencies.
-
-#### The Solution
-
-The fix involved breaking this circular dependency by:
-
-1. **Adding Local State**: We created a local state variable to track the UI mode:
    ```typescript
-   const [localUIMode, setLocalUIMode] = useState<'fun' | 'flat'>(uiSettings.ui_mode)
+   // Key aspects of the loading overlay implementation
+   return (
+     <div className={cn("relative", fullHeight && "h-full")}>
+       {children}
+       
+       {isLoading && (
+         <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-50 backdrop-blur-sm">
+           <div className="flex flex-col items-center gap-2">
+             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+             <p className="text-sm text-muted-foreground">Loading...</p>
+           </div>
+         </div>
+       )}
+     </div>
+   );
    ```
 
-2. **Synchronizing with Context**: We used useEffect to keep the local state in sync with the context:
+3. **Integration with Root Layout**:
+   - The LoadingProvider is positioned in the layout hierarchy to make loading state available to all components
+   - All application content is wrapped in the LoadingOverlay component
+   - This ensures a consistent loading experience throughout the application
+
+### Usage Pattern
+
+To use the loading system in any component:
+
+1. Import the `useLoading` hook:
    ```typescript
-   useEffect(() => {
-     if (localUIMode !== uiSettings.ui_mode) {
-       setLocalUIMode(uiSettings.ui_mode)
-     }
-   }, [uiSettings.ui_mode, localUIMode])
+   import { useLoading } from '@/contexts/loading-context';
    ```
 
-3. **Updating the Switch Component**: We modified the Switch to use the local state instead of reading directly from context:
-   ```jsx
-   <Switch 
-     id="ui-mode" 
-     checked={localUIMode === 'fun'}
-     onCheckedChange={handleUIModeChange}
-   />
-   ```
-
-4. **Modifying the Change Handler**: We updated the handler to set local state first, then update context:
+2. Access the loading state and setter:
    ```typescript
-   const handleUIModeChange = (isChecked: boolean) => {
-     const newMode = isChecked ? 'fun' : 'flat'
-     setLocalUIMode(newMode) // Update local state first
-     updateUISettings({ ui_mode: newMode }) // Then update context
-   }
+   const { isLoading, setIsLoading } = useLoading();
    ```
 
-5. **Improving Context Dependencies**: We modified the useEffect in the context to use JSON.stringify to prevent reference equality issues:
+3. Set loading state when needed:
    ```typescript
-   useEffect(() => {
-     // ...
-   }, [loading, JSON.stringify(uiSettings)])
-   ```
-
-This approach breaks the circular dependency by ensuring that the Switch component's state is managed locally first, then synchronized with the global context. This prevents the infinite loop of updates that was causing the error.
-
-### String Method TypeScript Error Fix
-
-The UI settings context was experiencing a TypeScript error: "This expression is not callable. Type 'String' has no call signatures." This error occurred because TypeScript was treating string properties as String objects rather than primitive strings.
-
-#### The Problem
-
-When accessing string properties like `uiSettings.gradient_from`, TypeScript was inferring them as `String` objects rather than primitive `string` types. This caused issues when trying to use string methods like `startsWith()` or `includes()`.
-
-The error message in the console showed:
-```
-Error applying UI settings: TypeError: uiSettings.gradient_fromuiSettings.gradient_viauiSettings.gradient_to is not a function
-```
-
-This indicated that the code was trying to treat the concatenation of these properties as a function, which suggests a syntax error in how the gradient was being constructed.
-
-#### The Solution
-
-The fix involved several key changes:
-
-1. **Explicit String Conversion**: We used the `String()` constructor to explicitly convert all color values to primitive strings:
-   ```typescript
-   const from = String(uiSettings.gradient_from || '');
-   ```
-
-2. **Null/Undefined Handling**: We added fallbacks for all values to prevent errors with null or undefined:
-   ```typescript
-   String(uiSettings.flat_color || '');
-   ```
-
-3. **Improved Pathname Handling**: We used a more robust approach for checking the pathname:
-   ```typescript
-   const pathString = pathname || '';
-   const isAccountPage = typeof pathString === 'string' && pathString.indexOf('/account') >= 0;
-   ```
-
-4. **Consistent Variable Usage**: We used consistent variable naming and element references:
-   ```typescript
-   const containerElement = accountContainer as HTMLElement;
-   containerElement.style.background = String(uiSettings.flat_color || '');
-   ```
-
-5. **Removed Unnecessary Type Guards**: We replaced complex type guards with direct string conversion, which is more reliable:
-   ```typescript
-   // Before:
-   if (isValidGradient(uiSettings.gradient_from) && isValidGradient(uiSettings.gradient_via) && isValidGradient(uiSettings.gradient_to)) {
-     // ...
-   }
+   // Start loading
+   setIsLoading(true);
    
-   // After:
-   const from = String(uiSettings.gradient_from || '');
-   const via = String(uiSettings.gradient_via || '');
-   const to = String(uiSettings.gradient_to || '');
+   // Perform async operation
+   await someAsyncOperation();
+   
+   // End loading
+   setIsLoading(false);
    ```
 
-These changes ensure that all string values are properly handled, preventing TypeScript errors and runtime issues with string methods.
+The loading overlay will automatically appear whenever `isLoading` is set to `true` and disappear when set back to `false`.
 
-### Infinite Loop Fix
+### Benefits
 
-The UI settings context was also experiencing an infinite loop issue where the component would continuously re-render. This was caused by the dependency array in the useEffect hook watching too many individual properties.
-
-#### The Problem
-
-The original code had a useEffect hook with a dependency array that included all individual gradient properties:
-
-```typescript
-useEffect(() => {
-  if (!loading) {
-    applyUISettings()
-  }
-}, [loading, uiSettings.ui_mode, uiSettings.gradient_from, uiSettings.gradient_via, uiSettings.gradient_to, uiSettings.flat_color, uiSettings.foreground_color])
-```
-
-This caused the effect to run whenever any of these properties changed, which then triggered state updates, causing more property changes and creating an infinite loop.
-
-#### The Solution
-
-The fix involved simplifying the dependency array to only watch the entire settings object:
-
-```typescript
-useEffect(() => {
-  if (!loading) {
-    // Use a ref to track if the effect is already running
-    const timeoutId = setTimeout(() => {
-      applyUISettings()
-    }, 100) // Add a small delay to batch potential rapid changes
-    
-    return () => clearTimeout(timeoutId)
-  }
-}, [loading, uiSettings]) // Only depend on the loading state and the entire settings object
-```
-
-Additionally, we added debouncing with setTimeout to batch rapid changes and included a cleanup function to prevent memory leaks.
-
-These changes prevent the infinite loop by ensuring that the effect doesn't trigger additional renders that would cause it to run again immediately.
+This loading system provides several benefits:
+- Consistent loading experience across the application
+- Centralized management of loading state
+- Prevents user interaction while data is loading
+- Provides clear visual feedback during asynchronous operations
+- Enhances perceived performance by communicating system state to users
