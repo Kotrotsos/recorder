@@ -2211,3 +2211,98 @@ const applyUISettings = (settings: UISettings) => {
 
 **User Experience Improvement:**
 The gradient animation now continues smoothly when colors are changed, providing a more consistent and visually pleasing experience for users who prefer the animated gradient background.
+
+## Account Management Page Design
+
+### Structure (Updated 2025-03-14)
+
+The account management page is designed with a modern, user-friendly interface inspired by the Pinterest account page layout. It features a sidebar navigation and content area that adapts well to both desktop and mobile viewing.
+
+#### Page Layout
+
+The account page is structured as follows:
+
+1. **Header**: 
+   - Title: "Account management"
+   - Description: "Make changes to your personal information or account type"
+
+2. **Two-Column Layout**:
+   - Left sidebar for navigation between account sections
+   - Right content area for the selected section content
+
+3. **Three Main Sections**:
+   - Profile Management
+   - Webhook Settings
+   - UI Settings
+
+#### Responsive Design
+
+- On desktop: Side-by-side layout with fixed-width sidebar and flexible content area
+- On mobile: Stacked layout with navigation on top and content below
+
+### User Profile Section
+
+The user profile section contains:
+
+1. **Account Information**:
+   - Email field with save button
+   - Password field with visibility toggle and change option
+
+2. **Business Account Conversion**:
+   - Information about business account benefits
+   - Conversion button
+
+3. **Account Management**:
+   - Account deactivation option with explanation
+   - Account deletion option with explanation
+
+4. **Premium Status**:
+   - Gold member badge and benefits for premium users
+
+### Webhook Settings Section
+
+The webhook settings section features:
+
+1. **Webhook Configuration**:
+   - URL input field
+   - Event selection dropdown
+   - Save button
+
+2. **Webhook Information**:
+   - Explanation of webhook functionality
+   - Sample payload with code formatting
+
+### UI Settings Section
+
+The UI settings section includes:
+
+1. **UI Mode Selection**:
+   - Toggle between "Fun" (gradient) and "Flat" color modes
+   - Live preview of the selected mode
+
+2. **Color Customization**:
+   - Color pickers for gradient colors (from, via, to) or flat color
+   - Text color selection
+   - Visual previews of color selections
+
+3. **Actions**:
+   - Reset to defaults button
+   - Save settings button
+
+### Implementation Details
+
+The implementation uses:
+
+1. **State Management**:
+   - React's useState for local component state
+   - Context API for UI settings that persist across the application
+
+2. **Component Organization**:
+   - Each section is a separate React component
+   - Main account page handles section switching via state
+
+3. **Styling Approach**:
+   - Tailwind CSS for styling
+   - Card-based layout with consistent spacing
+   - Backdrop blur and semi-transparent backgrounds for a modern look
+   - Clear visual hierarchy with section headings

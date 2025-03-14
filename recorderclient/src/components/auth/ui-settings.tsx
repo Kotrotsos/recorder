@@ -135,17 +135,19 @@ export default function UISettings() {
     setMessage('Settings reset to defaults. Click Save to make permanent.')
   }
 
-  // Preview component to show how text will look against the background
-  const ColorPreview = ({ background, foreground }: { background: string, foreground: string }) => (
-    <div 
-      className="h-20 rounded-md mt-2 flex items-center justify-center" 
-      style={{ background }}
-    >
-      <span style={{ color: foreground, fontWeight: 'bold' }}>
-        Preview Text
-      </span>
-    </div>
-  )
+  // Generate a gradient preview
+  const generateGradientPreview = () => {
+    return {
+      background: `linear-gradient(to right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`
+    }
+  }
+
+  // Generate a flat color preview
+  const generateFlatPreview = () => {
+    return {
+      background: uiSettings.flat_color
+    }
+  }
 
   if (loading) {
     return <div className="flex justify-center items-center min-h-[400px] text-white">Loading...</div>
@@ -156,7 +158,7 @@ export default function UISettings() {
   }
 
   return (
-    <Card className="w-full backdrop-blur-sm bg-white/5 border-0 shadow-lg h-full">
+    <Card className="w-full backdrop-blur-sm bg-white/5 border-0 shadow-lg">
       <CardHeader className="space-y-1 p-6">
         <div className="flex items-center justify-between">
           <CardTitle className="text-2xl font-bold text-white">UI Settings</CardTitle>
@@ -170,235 +172,210 @@ export default function UISettings() {
           Customize the appearance of your interface
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-6 pt-0">
-        <form onSubmit={handleSaveSettings} className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="ui-mode" className="text-white">UI Mode</Label>
-              <div className="text-sm text-white/60">
-                Switch between fun gradient and flat color mode
+      <CardContent className="p-6 pt-0 space-y-6">
+        <form onSubmit={handleSaveSettings}>
+          <div className="space-y-6">
+            {/* UI Mode Switch */}
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-white font-medium">UI Mode</h3>
+                  <p className="text-sm text-white/70 mt-1">
+                    Choose between a fun gradient or a simple flat color interface
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Label htmlFor="ui-mode" className="text-white/60">Flat</Label>
+                  <Switch 
+                    id="ui-mode" 
+                    checked={uiSettings.ui_mode === 'fun'}
+                    onCheckedChange={handleUIModeChange}
+                  />
+                  <Label htmlFor="ui-mode" className="text-white">Fun</Label>
+                </div>
+              </div>
+              
+              {/* Color Preview */}
+              <div className="h-16 rounded-md overflow-hidden">
+                <div className="h-full" style={uiSettings.ui_mode === 'fun' ? generateGradientPreview() : generateFlatPreview()}></div>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="ui-mode" className="text-white/60">Flat</Label>
-              <Switch 
-                id="ui-mode" 
-                checked={uiSettings.ui_mode === 'fun'}
-                onCheckedChange={handleUIModeChange}
-              />
-              <Label htmlFor="ui-mode" className="text-white">Fun</Label>
-            </div>
-          </div>
-          
-          <Tabs defaultValue="background" className="w-full">
-            <TabsList className="grid grid-cols-2 mb-4">
-              <TabsTrigger value="background">Background</TabsTrigger>
-              <TabsTrigger value="foreground">Text Color</TabsTrigger>
-            </TabsList>
             
-            <TabsContent value="background">
-              {uiSettings.ui_mode === 'fun' ? (
-                <div className="space-y-4">
-                  <div className="text-white font-medium">Set the Gradient Colors</div>
-                  
-                  <Dialog open={gradientDialogOpen} onOpenChange={setGradientDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button 
-                        type="button"
-                        className="w-full bg-white/10 hover:bg-white/20 text-white mb-4"
-                      >
-                        Open Gradient Editor
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[600px] bg-gray-900 border-gray-800">
-                      <DialogHeader>
-                        <DialogTitle className="text-white">Gradient Editor</DialogTitle>
-                      </DialogHeader>
-                      <div className="grid grid-cols-1 gap-6 py-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="gradient-from" className="text-white">From Color</Label>
-                          <div className="flex items-center gap-2">
-                            <input 
-                              type="color" 
-                              id="gradient-from" 
-                              value={uiSettings.gradient_from} 
-                              onChange={(e) => handleColorChange('gradient-from', e.target.value)} 
-                              className="w-12 h-10 border-0 cursor-pointer"
-                            />
-                            <Input 
-                              value={uiSettings.gradient_from}
-                              onChange={(e) => handleColorChange('gradient-from', e.target.value)}
-                              className="bg-white/10 border-white/20 text-white"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="gradient-via" className="text-white">Via Color</Label>
-                          <div className="flex items-center gap-2">
-                            <input 
-                              type="color" 
-                              id="gradient-via" 
-                              value={uiSettings.gradient_via} 
-                              onChange={(e) => handleColorChange('gradient-via', e.target.value)} 
-                              className="w-12 h-10 border-0 cursor-pointer"
-                            />
-                            <Input 
-                              value={uiSettings.gradient_via}
-                              onChange={(e) => handleColorChange('gradient-via', e.target.value)}
-                              className="bg-white/10 border-white/20 text-white"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="gradient-to" className="text-white">To Color</Label>
-                          <div className="flex items-center gap-2">
-                            <input 
-                              type="color" 
-                              id="gradient-to" 
-                              value={uiSettings.gradient_to} 
-                              onChange={(e) => handleColorChange('gradient-to', e.target.value)} 
-                              className="w-12 h-10 border-0 cursor-pointer"
-                            />
-                            <Input 
-                              value={uiSettings.gradient_to}
-                              onChange={(e) => handleColorChange('gradient-to', e.target.value)}
-                              className="bg-white/10 border-white/20 text-white"
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="mt-4">
-                          <ColorPreview 
-                            background={`linear-gradient(to right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`}
-                            foreground={uiSettings.foreground_color}
-                          />
-                        </div>
-                        
+            {/* Color Customization Section */}
+            <div>
+              <h3 className="text-lg font-medium text-white mb-4">Customize Colors</h3>
+              <div className="space-y-4">
+                {uiSettings.ui_mode === 'fun' ? (
+                  <div className="space-y-4">
+                    <Dialog open={gradientDialogOpen} onOpenChange={setGradientDialogOpen}>
+                      <DialogTrigger asChild>
                         <Button 
-                          type="button" 
-                          onClick={() => setGradientDialogOpen(false)}
-                          className="mt-2 bg-white/10 hover:bg-white/20 text-white"
+                          type="button"
+                          className="w-full md:w-auto bg-white/10 hover:bg-white/20 text-white"
                         >
-                          Done
+                          Open Gradient Editor
                         </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[600px] bg-gray-900 border-gray-800">
+                        <DialogHeader>
+                          <DialogTitle className="text-white">Gradient Editor</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid grid-cols-1 gap-6 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="gradient-from" className="text-white">From Color</Label>
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="color" 
+                                id="gradient-from" 
+                                value={uiSettings.gradient_from} 
+                                onChange={(e) => handleColorChange('gradient-from', e.target.value)} 
+                                className="w-12 h-10 border-0 cursor-pointer"
+                              />
+                              <Input 
+                                value={uiSettings.gradient_from}
+                                onChange={(e) => handleColorChange('gradient-from', e.target.value)}
+                                className="bg-white/10 border-white/20 text-white"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="gradient-via" className="text-white">Via Color</Label>
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="color" 
+                                id="gradient-via" 
+                                value={uiSettings.gradient_via} 
+                                onChange={(e) => handleColorChange('gradient-via', e.target.value)} 
+                                className="w-12 h-10 border-0 cursor-pointer"
+                              />
+                              <Input 
+                                value={uiSettings.gradient_via}
+                                onChange={(e) => handleColorChange('gradient-via', e.target.value)}
+                                className="bg-white/10 border-white/20 text-white"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="gradient-to" className="text-white">To Color</Label>
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="color" 
+                                id="gradient-to" 
+                                value={uiSettings.gradient_to} 
+                                onChange={(e) => handleColorChange('gradient-to', e.target.value)} 
+                                className="w-12 h-10 border-0 cursor-pointer"
+                              />
+                              <Input 
+                                value={uiSettings.gradient_to}
+                                onChange={(e) => handleColorChange('gradient-to', e.target.value)}
+                                className="bg-white/10 border-white/20 text-white"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="h-16 rounded-md overflow-hidden">
+                            <div className="h-full" style={generateGradientPreview()}></div>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                    
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <div className="h-10 rounded-md mb-1" style={{ background: uiSettings.gradient_from }}></div>
+                        <p className="text-xs text-center text-white/60">From</p>
                       </div>
-                    </DialogContent>
-                  </Dialog>
-                  
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    <div className="flex flex-col items-center">
-                      <div 
-                        className="w-10 h-10 rounded-md border-2 border-white/20" 
-                        style={{ backgroundColor: uiSettings.gradient_from }}
-                      />
-                      <span className="text-xs text-white/60 mt-1">From</span>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <div 
-                        className="w-10 h-10 rounded-md border-2 border-white/20" 
-                        style={{ backgroundColor: uiSettings.gradient_via }}
-                      />
-                      <span className="text-xs text-white/60 mt-1">Via</span>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <div 
-                        className="w-10 h-10 rounded-md border-2 border-white/20" 
-                        style={{ backgroundColor: uiSettings.gradient_to }}
-                      />
-                      <span className="text-xs text-white/60 mt-1">To</span>
+                      <div>
+                        <div className="h-10 rounded-md mb-1" style={{ background: uiSettings.gradient_via }}></div>
+                        <p className="text-xs text-center text-white/60">Via</p>
+                      </div>
+                      <div>
+                        <div className="h-10 rounded-md mb-1" style={{ background: uiSettings.gradient_to }}></div>
+                        <p className="text-xs text-center text-white/60">To</p>
+                      </div>
                     </div>
                   </div>
-                  
-                  <ColorPreview 
-                    background={`linear-gradient(to right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`}
-                    foreground={uiSettings.foreground_color}
-                  />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="text-white font-medium">Flat Color</div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="flat-color" className="text-sm text-white/70">Background Color</Label>
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="color" 
+                          id="flat-color" 
+                          value={uiSettings.flat_color} 
+                          onChange={(e) => handleColorChange('flat-color', e.target.value)} 
+                          className="w-12 h-10 border-0 cursor-pointer"
+                        />
+                        <Input 
+                          value={uiSettings.flat_color}
+                          onChange={(e) => handleColorChange('flat-color', e.target.value)}
+                          className="bg-white/10 border-white/20 text-white h-10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="space-y-2 pt-4">
+                  <Label htmlFor="foreground-color" className="text-sm text-white/70">Text Color</Label>
                   <div className="flex items-center gap-2">
                     <input 
                       type="color" 
-                      id="flat-color"
-                      value={uiSettings.flat_color} 
-                      onChange={(e) => handleColorChange('flat-color', e.target.value)} 
+                      id="foreground-color" 
+                      value={uiSettings.foreground_color} 
+                      onChange={(e) => handleColorChange('foreground-color', e.target.value)} 
                       className="w-12 h-10 border-0 cursor-pointer"
                     />
                     <Input 
-                      value={uiSettings.flat_color}
-                      onChange={(e) => handleColorChange('flat-color', e.target.value)}
-                      className="bg-white/10 border-white/20 text-white"
+                      value={uiSettings.foreground_color}
+                      onChange={(e) => handleColorChange('foreground-color', e.target.value)}
+                      className="bg-white/10 border-white/20 text-white h-10"
                     />
                   </div>
-                  <ColorPreview 
-                    background={uiSettings.flat_color}
-                    foreground={uiSettings.foreground_color}
-                  />
                 </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="foreground">
-              <div className="space-y-4">
-                <div className="text-white font-medium">Text Color</div>
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="color" 
-                    id="foreground-color"
-                    value={uiSettings.foreground_color} 
-                    onChange={(e) => handleColorChange('foreground-color', e.target.value)} 
-                    className="w-12 h-10 border-0 cursor-pointer"
-                  />
-                  <Input 
-                    value={uiSettings.foreground_color}
-                    onChange={(e) => handleColorChange('foreground-color', e.target.value)}
-                    className="bg-white/10 border-white/20 text-white"
-                  />
-                </div>
-                <ColorPreview 
-                  background={uiSettings.ui_mode === 'fun' 
-                    ? `linear-gradient(to right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`
-                    : uiSettings.flat_color
-                  }
-                  foreground={uiSettings.foreground_color}
-                />
               </div>
-            </TabsContent>
-          </Tabs>
-          
-          {error && (
-            <div className="text-sm font-medium text-red-300">{error}</div>
-          )}
-          {message && (
-            <div className="text-sm font-medium text-green-300">{message}</div>
-          )}
-          
-          <div className="flex gap-3">
-            <Button 
-              type="button" 
-              onClick={handleResetSettings}
-              className="flex items-center gap-1 bg-white/10 hover:bg-white/20 text-white"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Reset to Defaults
-            </Button>
+            </div>
             
-            <Button 
-              type="submit" 
-              className={`flex-1 ${hasUnsavedChanges ? 'bg-amber-500/50 hover:bg-amber-500/70' : 'bg-white/20 hover:bg-white/30'} text-white`}
-              disabled={saving || !hasUnsavedChanges}
-            >
-              {saving ? 'Saving...' : hasUnsavedChanges ? 'Save Changes' : 'No Changes to Save'}
-            </Button>
+            {error && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-sm font-medium text-red-300">
+                {error}
+              </div>
+            )}
+            
+            {message && (
+              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-md text-sm font-medium text-green-300">
+                {message}
+              </div>
+            )}
+            
+            <div className="flex flex-col md:flex-row gap-2 md:justify-between">
+              <Button 
+                type="button" 
+                onClick={handleResetSettings}
+                variant="outline"
+                className="bg-white/10 hover:bg-white/20 text-white border-white/20 order-2 md:order-1"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Reset to Defaults
+              </Button>
+              
+              <Button 
+                type="submit" 
+                className="bg-white/20 hover:bg-white/30 text-white order-1 md:order-2" 
+                disabled={saving || !hasUnsavedChanges}
+              >
+                {saving ? 'Saving...' : 'Save Settings'}
+              </Button>
+            </div>
           </div>
         </form>
       </CardContent>
       <CardFooter className="border-t border-white/10 pt-4 p-6">
         <div className="text-xs text-white/60 w-full">
-          Changes are applied immediately. Click Save to make them permanent.
+          These settings control the visual appearance of your application interface.
         </div>
       </CardFooter>
     </Card>

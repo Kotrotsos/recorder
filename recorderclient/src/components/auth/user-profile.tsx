@@ -10,6 +10,7 @@ import LogoutButton from './logout-button'
 import { User } from '@supabase/supabase-js'
 import SupporterBadge from '@/components/SupporterBadge'
 import { isLifetimeSupporter } from '@/utils/subscription'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function UserProfile() {
   const [user, setUser] = useState<User | null>(null)
@@ -19,6 +20,7 @@ export default function UserProfile() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSupporter, setIsSupporter] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -69,6 +71,26 @@ export default function UserProfile() {
     }
   }
 
+  const handlePasswordChange = () => {
+    // To be implemented
+    alert('Password change functionality would be implemented here')
+  }
+
+  const handleDeleteAccount = () => {
+    // To be implemented
+    alert('Account deletion functionality would be implemented here')
+  }
+
+  const handleDeactivateAccount = () => {
+    // To be implemented
+    alert('Account deactivation functionality would be implemented here')
+  }
+
+  const handleConvertToBusiness = () => {
+    // To be implemented
+    alert('Convert to business account functionality would be implemented here')
+  }
+
   if (loading) {
     return <div className="flex justify-center items-center min-h-[400px] text-white">Loading...</div>
   }
@@ -78,56 +100,157 @@ export default function UserProfile() {
   }
 
   return (
-    <Card className="w-full backdrop-blur-sm bg-white/5 border-0 shadow-lg h-full">
+    <Card className="w-full backdrop-blur-sm bg-white/5 border-0 shadow-lg">
       <CardHeader className="space-y-1 p-6">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-2xl font-bold text-white">Your Profile</CardTitle>
+          <CardTitle className="text-2xl font-bold text-white">Your account</CardTitle>
           {isSupporter && <SupporterBadge className="ml-2" />}
         </div>
         <CardDescription className="text-white/70">
-          Manage your account settings
+          Make changes to your personal information or account type
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-6 pt-0">
-        <form onSubmit={handleUpdateProfile} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-white">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-              required
-              className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/30 focus:ring-white/30"
-            />
-            <p className="text-xs text-white/60">
-              Changing your email will require confirmation from the new address.
+      <CardContent className="p-6 pt-0 space-y-8">
+        {/* Account Information Section */}
+        <div>
+          <h3 className="text-lg font-medium text-white mb-4">Your account</h3>
+          <div className="space-y-6">
+            {/* Email */}
+            <div className="space-y-1">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="email" className="text-sm text-white/70">Email • Private</Label>
+              </div>
+              <div className="relative">
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                  required
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/30 focus:ring-white/30 pl-3 pr-10 py-2 h-12 text-base"
+                />
+                <Button
+                  type="button"
+                  onClick={handleUpdateProfile}
+                  disabled={updating}
+                  className="absolute right-0 top-0 h-full px-4 text-white/70 hover:text-white bg-transparent hover:bg-white/10"
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+            
+            {/* Password */}
+            <div className="space-y-1">
+              <Label htmlFor="password" className="text-sm text-white/70">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value="••••••••"
+                  disabled
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/30 focus:ring-white/30 pl-3 pr-10 py-2 h-12 text-base"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-20 top-0 h-full px-3 text-white/70 hover:text-white bg-transparent"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+                <Button
+                  type="button"
+                  onClick={handlePasswordChange}
+                  className="absolute right-0 top-0 h-full px-4 text-white/70 hover:text-white bg-transparent hover:bg-white/10"
+                >
+                  Change
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Business Account Section */}
+        <div>
+          <h3 className="text-lg font-medium text-white mb-4">Convert to a business account</h3>
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <p className="text-sm text-white/80 mb-4">
+              With a business account you'll have access to tools like ads and analytics to grow your business on rec.ai
             </p>
+            <Button 
+              type="button" 
+              onClick={handleConvertToBusiness}
+              className="bg-white/20 hover:bg-white/30 text-white"
+            >
+              Convert account
+            </Button>
+          </div>
+        </div>
+        
+        {/* Deactivation and Deletion Section */}
+        <div>
+          <h3 className="text-lg font-medium text-white mb-4">Deactivation and deletion</h3>
+          
+          {/* Deactivate Account */}
+          <div className="space-y-2 mb-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="text-white font-medium">Deactivate account</h4>
+                <p className="text-sm text-white/70">
+                  Temporarily hide your profile, recordings and data
+                </p>
+              </div>
+              <Button 
+                type="button" 
+                onClick={handleDeactivateAccount}
+                variant="outline"
+                className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+              >
+                Deactivate account
+              </Button>
+            </div>
           </div>
           
-          {isSupporter && (
-            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-              <h3 className="text-amber-400 font-medium mb-1">You are awesome, Goldmember!</h3>
-              <p className="text-xs text-white/80">
-                Thank you for supporting this project! You have lifetime access to all premium features.
-              </p>
+          {/* Delete Account */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="text-white font-medium">Delete your data and account</h4>
+                <p className="text-sm text-white/70">
+                  Permanently delete your data and everything associated with your account
+                </p>
+              </div>
+              <Button 
+                type="button" 
+                onClick={handleDeleteAccount}
+                variant="destructive"
+                className="bg-red-900/50 hover:bg-red-900/70 text-white border-red-800/50"
+              >
+                Delete account
+              </Button>
             </div>
-          )}
-          
-          {error && (
-            <div className="text-sm font-medium text-red-300">{error}</div>
-          )}
-          {message && (
-            <div className="text-sm font-medium text-green-300">{message}</div>
-          )}
-          <Button 
-            type="submit" 
-            className="w-full bg-white/20 hover:bg-white/30 text-white" 
-            disabled={updating}
-          >
-            {updating ? 'Updating...' : 'Update Profile'}
-          </Button>
-        </form>
+          </div>
+        </div>
+        
+        {isSupporter && (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+            <h3 className="text-amber-400 font-medium mb-1">You are awesome, Goldmember!</h3>
+            <p className="text-sm text-white/80">
+              Thank you for supporting this project! You have lifetime access to all premium features.
+            </p>
+          </div>
+        )}
+        
+        {error && (
+          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-sm font-medium text-red-300">
+            {error}
+          </div>
+        )}
+        {message && (
+          <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-md text-sm font-medium text-green-300">
+            {message}
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex justify-between border-t border-white/10 pt-4 p-6">
         <div className="text-sm text-white/60">

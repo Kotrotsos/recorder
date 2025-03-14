@@ -855,3 +855,38 @@ This update adds persistence to the translation functionality. When a user trans
 - Maintained the backgroundSize, animation, and animation-play-state properties when updating the gradient
 - Added local variable for DOM element to improve code readability
 - Added detailed documentation in HOW.AI.md about the fix
+
+## 2025-03-14 20:35:57
+### Feat(ui): Redesign account management page
+
+Redesigned the account management page to make it look better and easier to read:
+
+1. Added a sidebar navigation to separate different account sections:
+   - Edit profile
+   - Webhooks
+   - UI settings
+
+2. UserProfile component improvements:
+   - Added a clear visual separation between different sections
+   - Improved form layout with better spacing and organization
+   - Added password field with visibility toggle
+   - Added business account conversion section
+   - Added account deactivation and deletion options
+   - Improved styling of notification messages
+
+3. WebhookSettings component improvements:
+   - Enhanced layout with better spacing and organization
+   - Added webhook information section with sample payload
+   - Improved form appearance for better readability
+
+4. UISettings component improvements:
+   - Reorganized UI mode selection into a card with visual preview
+   - Improved color customization interface
+   - Better organization of controls with clearer labels
+   - Responsive button layout for mobile and desktop
+
+Files changed:
+- src/app/account/page.tsx
+- src/components/auth/user-profile.tsx
+- src/components/auth/webhook-settings.tsx
+- src/components/auth/ui-settings.tsx
