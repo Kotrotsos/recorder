@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useUISettings } from '@/contexts/ui-settings-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RefreshCw } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 // Default UI settings for reset functionality
 const defaultUISettings = {
@@ -40,6 +41,9 @@ export default function UISettings() {
   
   // Color picker states
   const [activeColorPicker, setActiveColorPicker] = useState<string | null>(null)
+  
+  // Dialog state
+  const [gradientDialogOpen, setGradientDialogOpen] = useState(false)
   
   const supabase = createClient()
 
@@ -131,70 +135,6 @@ export default function UISettings() {
     setMessage('Settings reset to defaults. Click Save to make permanent.')
   }
 
-  // Color picker component with draggable functionality
-  const ColorPickerPopover = ({ 
-    color, 
-    onChange, 
-    label, 
-    id 
-  }: { 
-    color: string, 
-    onChange: (color: string) => void, 
-    label: string, 
-    id: string 
-  }) => {
-    // Local state to track color during dragging
-    const [localColor, setLocalColor] = useState(color);
-    
-    // Update local color when prop changes
-    useEffect(() => {
-      setLocalColor(color);
-    }, [color]);
-    
-    // Handle color change during dragging
-    const handleColorChange = (newColor: string) => {
-      setLocalColor(newColor);
-      onChange(newColor); // Update parent state in real-time
-    };
-    
-    return (
-      <div className="space-y-2">
-        <Label htmlFor={id} className="text-white">{label}</Label>
-        <div className="flex items-center gap-2">
-          <Popover open={activeColorPicker === id} onOpenChange={(isOpen: boolean) => setActiveColorPicker(isOpen ? id : null)}>
-            <PopoverTrigger asChild>
-              <Button 
-                id={id}
-                type="button" 
-                variant="outline" 
-                className="w-10 h-10 p-0 border-2"
-                style={{ backgroundColor: localColor }}
-              />
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-3">
-              <HexColorPicker 
-                color={localColor} 
-                onChange={handleColorChange} 
-              />
-              <div className="mt-2">
-                <Input 
-                  value={localColor} 
-                  onChange={(e) => handleColorChange(e.target.value)}
-                  className="bg-white/10 border-white/20 text-white"
-                />
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Input 
-            value={localColor} 
-            onChange={(e) => handleColorChange(e.target.value)}
-            className="bg-white/10 border-white/20 text-white"
-          />
-        </div>
-      </div>
-    );
-  }
-
   // Preview component to show how text will look against the background
   const ColorPreview = ({ background, foreground }: { background: string, foreground: string }) => (
     <div 
@@ -259,27 +199,118 @@ export default function UISettings() {
             <TabsContent value="background">
               {uiSettings.ui_mode === 'fun' ? (
                 <div className="space-y-4">
-                  <div className="text-white font-medium">Gradient Colors</div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <ColorPickerPopover 
-                      id="gradient-from"
-                      label="From Color" 
-                      color={uiSettings.gradient_from} 
-                      onChange={(color) => handleColorChange('gradient-from', color)}
-                    />
-                    <ColorPickerPopover 
-                      id="gradient-via"
-                      label="Via Color" 
-                      color={uiSettings.gradient_via} 
-                      onChange={(color) => handleColorChange('gradient-via', color)}
-                    />
-                    <ColorPickerPopover 
-                      id="gradient-to"
-                      label="To Color" 
-                      color={uiSettings.gradient_to} 
-                      onChange={(color) => handleColorChange('gradient-to', color)}
-                    />
+                  <div className="text-white font-medium">Set the Gradient Colors</div>
+                  
+                  <Dialog open={gradientDialogOpen} onOpenChange={setGradientDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        type="button"
+                        className="w-full bg-white/10 hover:bg-white/20 text-white mb-4"
+                      >
+                        Open Gradient Editor
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[600px] bg-gray-900 border-gray-800">
+                      <DialogHeader>
+                        <DialogTitle className="text-white">Gradient Editor</DialogTitle>
+                      </DialogHeader>
+                      <div className="grid grid-cols-1 gap-6 py-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="gradient-from" className="text-white">From Color</Label>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="color" 
+                              id="gradient-from" 
+                              value={uiSettings.gradient_from} 
+                              onChange={(e) => handleColorChange('gradient-from', e.target.value)} 
+                              className="w-12 h-10 border-0 cursor-pointer"
+                            />
+                            <Input 
+                              value={uiSettings.gradient_from}
+                              onChange={(e) => handleColorChange('gradient-from', e.target.value)}
+                              className="bg-white/10 border-white/20 text-white"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="gradient-via" className="text-white">Via Color</Label>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="color" 
+                              id="gradient-via" 
+                              value={uiSettings.gradient_via} 
+                              onChange={(e) => handleColorChange('gradient-via', e.target.value)} 
+                              className="w-12 h-10 border-0 cursor-pointer"
+                            />
+                            <Input 
+                              value={uiSettings.gradient_via}
+                              onChange={(e) => handleColorChange('gradient-via', e.target.value)}
+                              className="bg-white/10 border-white/20 text-white"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="gradient-to" className="text-white">To Color</Label>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="color" 
+                              id="gradient-to" 
+                              value={uiSettings.gradient_to} 
+                              onChange={(e) => handleColorChange('gradient-to', e.target.value)} 
+                              className="w-12 h-10 border-0 cursor-pointer"
+                            />
+                            <Input 
+                              value={uiSettings.gradient_to}
+                              onChange={(e) => handleColorChange('gradient-to', e.target.value)}
+                              className="bg-white/10 border-white/20 text-white"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="mt-4">
+                          <ColorPreview 
+                            background={`linear-gradient(to right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`}
+                            foreground={uiSettings.foreground_color}
+                          />
+                        </div>
+                        
+                        <Button 
+                          type="button" 
+                          onClick={() => setGradientDialogOpen(false)}
+                          className="mt-2 bg-white/10 hover:bg-white/20 text-white"
+                        >
+                          Done
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div className="flex flex-col items-center">
+                      <div 
+                        className="w-10 h-10 rounded-md border-2 border-white/20" 
+                        style={{ backgroundColor: uiSettings.gradient_from }}
+                      />
+                      <span className="text-xs text-white/60 mt-1">From</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <div 
+                        className="w-10 h-10 rounded-md border-2 border-white/20" 
+                        style={{ backgroundColor: uiSettings.gradient_via }}
+                      />
+                      <span className="text-xs text-white/60 mt-1">Via</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <div 
+                        className="w-10 h-10 rounded-md border-2 border-white/20" 
+                        style={{ backgroundColor: uiSettings.gradient_to }}
+                      />
+                      <span className="text-xs text-white/60 mt-1">To</span>
+                    </div>
                   </div>
+                  
                   <ColorPreview 
                     background={`linear-gradient(to right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`}
                     foreground={uiSettings.foreground_color}
@@ -288,12 +319,20 @@ export default function UISettings() {
               ) : (
                 <div className="space-y-4">
                   <div className="text-white font-medium">Flat Color</div>
-                  <ColorPickerPopover 
-                    id="flat-color"
-                    label="Background Color" 
-                    color={uiSettings.flat_color} 
-                    onChange={(color) => handleColorChange('flat-color', color)}
-                  />
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="color" 
+                      id="flat-color"
+                      value={uiSettings.flat_color} 
+                      onChange={(e) => handleColorChange('flat-color', e.target.value)} 
+                      className="w-12 h-10 border-0 cursor-pointer"
+                    />
+                    <Input 
+                      value={uiSettings.flat_color}
+                      onChange={(e) => handleColorChange('flat-color', e.target.value)}
+                      className="bg-white/10 border-white/20 text-white"
+                    />
+                  </div>
                   <ColorPreview 
                     background={uiSettings.flat_color}
                     foreground={uiSettings.foreground_color}
@@ -305,12 +344,20 @@ export default function UISettings() {
             <TabsContent value="foreground">
               <div className="space-y-4">
                 <div className="text-white font-medium">Text Color</div>
-                <ColorPickerPopover 
-                  id="foreground-color"
-                  label="Text Color" 
-                  color={uiSettings.foreground_color} 
-                  onChange={(color) => handleColorChange('foreground-color', color)}
-                />
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="color" 
+                    id="foreground-color"
+                    value={uiSettings.foreground_color} 
+                    onChange={(e) => handleColorChange('foreground-color', e.target.value)} 
+                    className="w-12 h-10 border-0 cursor-pointer"
+                  />
+                  <Input 
+                    value={uiSettings.foreground_color}
+                    onChange={(e) => handleColorChange('foreground-color', e.target.value)}
+                    className="bg-white/10 border-white/20 text-white"
+                  />
+                </div>
                 <ColorPreview 
                   background={uiSettings.ui_mode === 'fun' 
                     ? `linear-gradient(to right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`

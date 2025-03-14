@@ -109,82 +109,6 @@ The implementation uses a simple stacked layout with consistent spacing:
 
 ## UI Settings System
 
-### May 15, 2024 - Updated 13:00 CET
-
-#### Real-Time Color Picker Enhancement
-
-The color picker in the UI settings has been enhanced to provide real-time feedback while dragging:
-
-1. **Issue Description**:
-   - Previously, the gradient would only update after releasing the mouse button when selecting a color
-   - This made it difficult to see the effect of color changes while dragging the picker
-   - Users couldn't see the transitions smoothly as they moved the color picker
-
-2. **Implementation Solution**:
-   - Added local state to the ColorPickerPopover component to track color changes during dragging
-   - Modified the color picker to update the parent state in real-time as the user drags
-   - Implemented a handleColorChange function that updates both local and parent state simultaneously
-   - Used useEffect to keep local state in sync with parent state
-
-3. **Code Implementation**:
-   ```typescript
-   const ColorPickerPopover = ({ color, onChange, label, id }) => {
-     // Local state to track color during dragging
-     const [localColor, setLocalColor] = useState(color);
-     
-     // Update local color when prop changes
-     useEffect(() => {
-       setLocalColor(color);
-     }, [color]);
-     
-     // Handle color change during dragging
-     const handleColorChange = (newColor: string) => {
-       setLocalColor(newColor);
-       onChange(newColor); // Update parent state in real-time
-     };
-     
-     // Component rendering...
-   }
-   ```
-
-4. **User Experience Improvement**:
-   - Users can now see the gradient change in real-time as they drag the color picker
-   - Provides immediate visual feedback for a more intuitive color selection experience
-   - Makes it easier to find the perfect color by seeing transitions smoothly
-   - Enhances the overall feel of the UI settings interface
-
-### May 15, 2024 - Updated 12:00 CET
-
-#### Gradient Animation Fix
-
-The UI settings system has been enhanced to maintain gradient animations when colors are changed:
-
-1. **Issue Description**:
-   - Previously, when users changed gradient colors in the UI settings, the animation would stop
-   - This happened because only the `background` property was being updated, not the animation properties
-
-2. **Implementation Fix**:
-   - Modified the `applyUISettings` function to explicitly set animation properties when updating colors
-   - Added `backgroundSize` and `animation` CSS properties to preserve the animation effect
-   - Used a local variable for the HTML element to improve code readability and avoid repetitive casting
-
-3. **Code Implementation**:
-   ```typescript
-   // Apply gradient background
-   document.querySelectorAll('.animated-gradient').forEach((el) => {
-     const element = el as HTMLElement;
-     element.style.background = `linear-gradient(to bottom right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`;
-     // Ensure animation properties are preserved
-     element.style.backgroundSize = '200% 200%';
-     element.style.animation = 'gradientShift 15s ease infinite';
-   })
-   ```
-
-4. **User Experience Improvement**:
-   - Users can now change gradient colors while maintaining the smooth animation effect
-   - The animation continues seamlessly after color changes are applied
-   - This creates a more cohesive and polished user experience
-
 ### March 14, 2024 - Updated 18:00 CET
 
 The UI settings system allows users to customize the appearance of the application by switching between 'fun' (gradient) and 'flat' color modes, and selecting custom colors for each mode. The system now features real-time previewing with a save mechanism for persistence, foreground color customization, draggable color pickers, and a reset functionality.
@@ -2107,3 +2031,183 @@ The translation functionality in the audio recorder component had a critical syn
    - Maintained all the original functionality while fixing the syntax issues
 
 This fix ensures that the translation functionality works correctly and prevents build failures, allowing users to continue using the application without interruption.
+
+## UI Settings System
+
+### Modal-Based Gradient Editor
+
+**Issue:** Users were unable to drag across color pickers to select colors smoothly. Various attempts to fix the issue with inline color pickers and event handling adjustments were unsuccessful.
+
+**Solution:** Implemented a dedicated modal dialog for gradient editing that opens when clicking an "Open Gradient Editor" button.
+
+**Implementation:**
+1. Added a Dialog component from the UI component library
+2. Created a button that triggers the dialog to open
+3. Placed HTML5 color inputs inside the dialog, isolated from the main UI
+4. Added color swatches in the main UI to preview the gradient colors
+
+**Code Implementation:**
+```tsx
+// Dialog state
+const [gradientDialogOpen, setGradientDialogOpen] = useState(false);
+
+// Dialog component with color pickers
+<Dialog open={gradientDialogOpen} onOpenChange={setGradientDialogOpen}>
+  <DialogTrigger asChild>
+    <Button 
+      type="button"
+      className="w-full bg-white/10 hover:bg-white/20 text-white mb-4"
+    >
+      Open Gradient Editor
+    </Button>
+  </DialogTrigger>
+  <DialogContent className="sm:max-w-[600px] bg-gray-900 border-gray-800">
+    <DialogHeader>
+      <DialogTitle className="text-white">Gradient Editor</DialogTitle>
+    </DialogHeader>
+    <div className="grid grid-cols-1 gap-6 py-4">
+      {/* Color pickers for each gradient stop */}
+      <div className="space-y-2">
+        <Label htmlFor="gradient-from" className="text-white">From Color</Label>
+        <div className="flex items-center gap-2">
+          <input 
+            type="color" 
+            id="gradient-from" 
+            value={uiSettings.gradient_from} 
+            onChange={(e) => handleColorChange('gradient-from', e.target.value)} 
+            className="w-12 h-10 border-0 cursor-pointer"
+          />
+          <Input 
+            value={uiSettings.gradient_from}
+            onChange={(e) => handleColorChange('gradient-from', e.target.value)}
+            className="bg-white/10 border-white/20 text-white"
+          />
+        </div>
+      </div>
+      
+      {/* Similar blocks for gradient-via and gradient-to */}
+    </div>
+  </DialogContent>
+</Dialog>
+```
+
+**User Experience Improvement:**
+By isolating the color pickers in a dedicated modal dialog, users can now:
+- Interact with the color pickers without interference from other UI elements
+- Drag across the color pickers to select colors smoothly
+- See the gradient update in real-time as they select colors
+- Use the main UI to see the overall effect of their color choices
+
+### Enhanced Real-Time Color Picker
+
+**Issue:** Users experienced delays in color updates while dragging the color picker.
+
+**Solution:** Added `requestAnimationFrame` to optimize the update process and included a `touch-none` class for mobile devices.
+
+**Implementation:**
+- Used `requestAnimationFrame` to synchronize UI updates with the browser rendering cycle
+- Added a `touch-none` class to prevent interference from touch events on mobile devices
+- Simplified the component to ensure smooth real-time updates
+
+**Code Implementation:**
+```tsx
+const handleColorChange = (newColor: string) => {
+  setLocalColor(newColor);
+  requestAnimationFrame(() => {
+    onChange(newColor);
+  });
+};
+
+<HexColorPicker 
+  color={localColor} 
+  onChange={handleColorChange} 
+  className="touch-none"
+/>
+```
+
+**User Experience Improvement:**
+The color picker now provides smooth, real-time updates as users drag across it, enhancing the interactive experience when selecting colors for the gradient.
+
+### Real-Time Color Picker Enhancement
+
+**Issue:** Previously, the gradient would only update after releasing the mouse button, making it difficult for users to see color transitions smoothly.
+
+**Solution:** Added local state to the `ColorPickerPopover` component to manage real-time updates.
+
+**Implementation:**
+- Added local state to track color changes during dragging
+- Modified the color picker to update the parent state in real-time
+- Implemented a `handleColorChange` function to manage state updates
+
+**Code Implementation:**
+```tsx
+const ColorPickerPopover = ({ color, onChange, label, id }) => {
+  const [localColor, setLocalColor] = useState(color);
+
+  useEffect(() => {
+    setLocalColor(color);
+  }, [color]);
+
+  const handleColorChange = (newColor: string) => {
+    setLocalColor(newColor);
+    onChange(newColor);
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id} className="text-white">{label}</Label>
+      <div className="flex flex-col gap-2">
+        <HexColorPicker 
+          color={localColor} 
+          onChange={handleColorChange} 
+        />
+        <Input 
+          value={localColor} 
+          onChange={(e) => handleColorChange(e.target.value)}
+          className="bg-white/10 border-white/20 text-white"
+        />
+      </div>
+    </div>
+  );
+};
+```
+
+**User Experience Improvement:**
+Users can now see the gradient change in real-time, providing immediate visual feedback for a more intuitive color selection experience.
+
+### Gradient Animation Fix
+
+**Issue:** The gradient animation would stop whenever UI settings colors were changed.
+
+**Solution:** Modified the `applyUISettings` function to explicitly set animation properties when updating the background.
+
+**Implementation:**
+- Updated the `applyUISettings` function in the UI settings context
+- Explicitly set `backgroundSize`, `animation`, and `animation-play-state` CSS properties
+- Used a local variable for the HTML element to enhance code readability
+
+**Code Implementation:**
+```tsx
+const applyUISettings = (settings: UISettings) => {
+  const htmlElement = document.documentElement;
+  
+  if (settings.ui_mode === 'fun') {
+    htmlElement.style.background = `linear-gradient(to right, ${settings.gradient_from}, ${settings.gradient_via}, ${settings.gradient_to})`;
+    // Explicitly set animation properties to preserve them
+    htmlElement.style.backgroundSize = '400% 400%';
+    htmlElement.style.animation = 'gradient 15s ease infinite';
+    htmlElement.style.animationPlayState = 'running';
+  } else {
+    htmlElement.style.background = settings.flat_color;
+    // Clear animation properties for flat mode
+    htmlElement.style.backgroundSize = '';
+    htmlElement.style.animation = '';
+    htmlElement.style.animationPlayState = '';
+  }
+  
+  htmlElement.style.color = settings.foreground_color;
+};
+```
+
+**User Experience Improvement:**
+The gradient animation now continues smoothly when colors are changed, providing a more consistent and visually pleasing experience for users who prefer the animated gradient background.

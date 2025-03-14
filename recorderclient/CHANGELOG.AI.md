@@ -822,19 +822,36 @@ This update adds persistence to the translation functionality. When a user trans
 - Updated the max width of the container to accommodate the settings cards
 - Maintained the individual cards for each settings component
 
-## May 15, 2024 - 12:00 CET
+## May 15, 2024, 15:00 CET
 
-### Fixed
-- Fixed an issue where gradient animation would stop when UI settings colors were changed
-- Modified the `applyUISettings` function in the UI settings context to preserve animation properties
-- Ensured the `backgroundSize` and `animation` CSS properties are explicitly set when changing gradient colors
-- Improved code organization by using a local variable for the HTML element to avoid repetitive casting
+### Enhanced Color Picker with Modal Dialog
+- Implemented a modal-based gradient editor to resolve drag interaction issues with color pickers
+- Added an "Open Gradient Editor" button that opens a dedicated dialog for editing gradient colors
+- Used native HTML5 color inputs inside the modal for reliable drag operations
+- Provided color swatches in the main UI to preview the currently selected gradient colors
+- Improved user experience by isolating color selection in a focused, dedicated interface
 
-## May 15, 2024 - 13:00 CET
+## May 15, 2024, 14:00 CET
 
-### Enhanced
-- Improved color picker UX in UI settings to update gradient in real-time while dragging
+### Further Enhanced Color Picker UX for Real-Time Dragging
+- Added requestAnimationFrame to optimize the color update process during dragging
+- Added touch-none class to improve mobile usability by preventing touch event issues
+- Enhanced the overall user experience when selecting gradient colors
+
+## May 15, 2024, 13:00 CET
+
+### Improved Color Picker UX
+- Enhanced color picker in UI settings to update the gradient in real-time while dragging
 - Added local state to the ColorPickerPopover component to track color changes during dragging
-- Modified the color picker to update the gradient immediately as the user drags, providing instant visual feedback
+- Modified the color picker to provide instant visual feedback by updating the gradient immediately as the user drags
 - Ensured consistent state management between the color picker and the parent component
 - Improved overall user experience when selecting gradient colors
+
+## May 15, 2024, 12:00 CET
+
+### Fixed Gradient Animation Issue
+- Fixed bug where gradient animation would stop when UI settings colors were changed
+- Modified the applyUISettings function in src/contexts/ui-settings-context.tsx to explicitly set animation properties
+- Maintained the backgroundSize, animation, and animation-play-state properties when updating the gradient
+- Added local variable for DOM element to improve code readability
+- Added detailed documentation in HOW.AI.md about the fix
