@@ -194,12 +194,20 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
     if (uiSettings.ui_mode === 'fun') {
       // Apply gradient background
       document.querySelectorAll('.animated-gradient').forEach((el) => {
-        (el as HTMLElement).style.background = `linear-gradient(to bottom right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`
+        const element = el as HTMLElement;
+        element.style.background = `linear-gradient(to bottom right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`;
+        // Ensure animation properties are preserved
+        element.style.backgroundSize = '200% 200%';
+        element.style.animation = 'gradientShift 15s ease infinite';
       })
     } else {
       // Apply flat background
       document.querySelectorAll('.animated-gradient').forEach((el) => {
-        (el as HTMLElement).style.background = uiSettings.flat_color
+        const element = el as HTMLElement;
+        element.style.background = uiSettings.flat_color;
+        // Remove animation for flat mode
+        element.style.backgroundSize = 'auto';
+        element.style.animation = 'none';
       })
     }
     

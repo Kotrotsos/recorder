@@ -10,8 +10,8 @@ export default function AccountPage() {
   return (
     <ProtectedRoute>
       <AuthLayout title="Your Account" description="Manage your profile and settings">
-        <div className="max-w-3xl mx-auto w-full p-6">
-          <div className="space-y-8">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className="space-y-6">
             <UserProfile />
             <WebhookSettings />
             <UISettings />

@@ -812,3 +812,29 @@ This update adds persistence to the translation functionality. When a user trans
 - Implemented functionality to copy transcript content to clipboard
 - Added success/error toast notifications for the copy operation
 - Positioned the button next to the "Transcript" heading for easy access
+
+## March 14, 2025 - 18:09 CET
+
+### Changed
+- Removed the surrounding card from the settings page to improve UI
+- Eliminated the nested card appearance (cards within cards)
+- Adjusted spacing between settings components for better visual hierarchy
+- Updated the max width of the container to accommodate the settings cards
+- Maintained the individual cards for each settings component
+
+## May 15, 2024 - 12:00 CET
+
+### Fixed
+- Fixed an issue where gradient animation would stop when UI settings colors were changed
+- Modified the `applyUISettings` function in the UI settings context to preserve animation properties
+- Ensured the `backgroundSize` and `animation` CSS properties are explicitly set when changing gradient colors
+- Improved code organization by using a local variable for the HTML element to avoid repetitive casting
+
+## May 15, 2024 - 13:00 CET
+
+### Enhanced
+- Improved color picker UX in UI settings to update gradient in real-time while dragging
+- Added local state to the ColorPickerPopover component to track color changes during dragging
+- Modified the color picker to update the gradient immediately as the user drags, providing instant visual feedback
+- Ensured consistent state management between the color picker and the parent component
+- Improved overall user experience when selecting gradient colors

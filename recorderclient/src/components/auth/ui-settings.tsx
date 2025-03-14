@@ -142,42 +142,58 @@ export default function UISettings() {
     onChange: (color: string) => void, 
     label: string, 
     id: string 
-  }) => (
-    <div className="space-y-2">
-      <Label htmlFor={id} className="text-white">{label}</Label>
-      <div className="flex items-center gap-2">
-        <Popover open={activeColorPicker === id} onOpenChange={(isOpen: boolean) => setActiveColorPicker(isOpen ? id : null)}>
-          <PopoverTrigger asChild>
-            <Button 
-              id={id}
-              type="button" 
-              variant="outline" 
-              className="w-10 h-10 p-0 border-2"
-              style={{ backgroundColor: color }}
-            />
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-3">
-            <HexColorPicker 
-              color={color} 
-              onChange={(newColor) => onChange(newColor)} 
-            />
-            <div className="mt-2">
-              <Input 
-                value={color} 
-                onChange={(e) => onChange(e.target.value)}
-                className="bg-white/10 border-white/20 text-white"
+  }) => {
+    // Local state to track color during dragging
+    const [localColor, setLocalColor] = useState(color);
+    
+    // Update local color when prop changes
+    useEffect(() => {
+      setLocalColor(color);
+    }, [color]);
+    
+    // Handle color change during dragging
+    const handleColorChange = (newColor: string) => {
+      setLocalColor(newColor);
+      onChange(newColor); // Update parent state in real-time
+    };
+    
+    return (
+      <div className="space-y-2">
+        <Label htmlFor={id} className="text-white">{label}</Label>
+        <div className="flex items-center gap-2">
+          <Popover open={activeColorPicker === id} onOpenChange={(isOpen: boolean) => setActiveColorPicker(isOpen ? id : null)}>
+            <PopoverTrigger asChild>
+              <Button 
+                id={id}
+                type="button" 
+                variant="outline" 
+                className="w-10 h-10 p-0 border-2"
+                style={{ backgroundColor: localColor }}
               />
-            </div>
-          </PopoverContent>
-        </Popover>
-        <Input 
-          value={color} 
-          onChange={(e) => onChange(e.target.value)}
-          className="bg-white/10 border-white/20 text-white"
-        />
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-3">
+              <HexColorPicker 
+                color={localColor} 
+                onChange={handleColorChange} 
+              />
+              <div className="mt-2">
+                <Input 
+                  value={localColor} 
+                  onChange={(e) => handleColorChange(e.target.value)}
+                  className="bg-white/10 border-white/20 text-white"
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Input 
+            value={localColor} 
+            onChange={(e) => handleColorChange(e.target.value)}
+            className="bg-white/10 border-white/20 text-white"
+          />
+        </div>
       </div>
-    </div>
-  )
+    );
+  }
 
   // Preview component to show how text will look against the background
   const ColorPreview = ({ background, foreground }: { background: string, foreground: string }) => (

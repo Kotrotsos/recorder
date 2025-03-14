@@ -2,6 +2,38 @@
 
 This file documents complex parts of the codebase and explains how they work.
 
+## Settings Page Layout Improvement
+
+### March 14, 2025
+
+The settings page layout has been improved by removing the surrounding card that was creating a nested card appearance. This change enhances the visual hierarchy and eliminates the "cards within cards" look that was causing visual confusion.
+
+### Implementation Details
+
+1. **AuthLayout Component**: 
+   - Removed the `bg-white/10`, `backdrop-blur-md`, and `shadow-xl` classes from the container div
+   - Kept only the `rounded-xl` class to maintain consistent corner rounding
+   - This eliminates the outer card appearance while preserving the layout structure
+
+2. **Account Page Component**:
+   - Increased the maximum width from `max-w-3xl` to `max-w-7xl` to better accommodate the settings cards
+   - Reduced the vertical spacing between components from `space-y-8` to `space-y-6` for better visual balance
+   - Removed the padding (`p-6`) from the container as it's no longer needed without the outer card
+
+3. **Individual Setting Components**:
+   - Maintained the card styling for each individual settings component (UserProfile, WebhookSettings, UISettings)
+   - Each component continues to use the Card component with appropriate styling
+   - This preserves the visual separation between different settings sections
+
+### User Experience
+
+The improved layout creates a cleaner visual hierarchy:
+1. The page title and description at the top
+2. Individual settings cards below, each with its own visual container
+3. No nested card appearance that could cause visual confusion
+
+This change makes the settings page feel more spacious and organized, with each settings card standing on its own rather than being contained within another card.
+
 ## Transcript Copy Functionality
 
 ### March 14, 2025
@@ -76,6 +108,82 @@ The implementation uses a simple stacked layout with consistent spacing:
 ```
 
 ## UI Settings System
+
+### May 15, 2024 - Updated 13:00 CET
+
+#### Real-Time Color Picker Enhancement
+
+The color picker in the UI settings has been enhanced to provide real-time feedback while dragging:
+
+1. **Issue Description**:
+   - Previously, the gradient would only update after releasing the mouse button when selecting a color
+   - This made it difficult to see the effect of color changes while dragging the picker
+   - Users couldn't see the transitions smoothly as they moved the color picker
+
+2. **Implementation Solution**:
+   - Added local state to the ColorPickerPopover component to track color changes during dragging
+   - Modified the color picker to update the parent state in real-time as the user drags
+   - Implemented a handleColorChange function that updates both local and parent state simultaneously
+   - Used useEffect to keep local state in sync with parent state
+
+3. **Code Implementation**:
+   ```typescript
+   const ColorPickerPopover = ({ color, onChange, label, id }) => {
+     // Local state to track color during dragging
+     const [localColor, setLocalColor] = useState(color);
+     
+     // Update local color when prop changes
+     useEffect(() => {
+       setLocalColor(color);
+     }, [color]);
+     
+     // Handle color change during dragging
+     const handleColorChange = (newColor: string) => {
+       setLocalColor(newColor);
+       onChange(newColor); // Update parent state in real-time
+     };
+     
+     // Component rendering...
+   }
+   ```
+
+4. **User Experience Improvement**:
+   - Users can now see the gradient change in real-time as they drag the color picker
+   - Provides immediate visual feedback for a more intuitive color selection experience
+   - Makes it easier to find the perfect color by seeing transitions smoothly
+   - Enhances the overall feel of the UI settings interface
+
+### May 15, 2024 - Updated 12:00 CET
+
+#### Gradient Animation Fix
+
+The UI settings system has been enhanced to maintain gradient animations when colors are changed:
+
+1. **Issue Description**:
+   - Previously, when users changed gradient colors in the UI settings, the animation would stop
+   - This happened because only the `background` property was being updated, not the animation properties
+
+2. **Implementation Fix**:
+   - Modified the `applyUISettings` function to explicitly set animation properties when updating colors
+   - Added `backgroundSize` and `animation` CSS properties to preserve the animation effect
+   - Used a local variable for the HTML element to improve code readability and avoid repetitive casting
+
+3. **Code Implementation**:
+   ```typescript
+   // Apply gradient background
+   document.querySelectorAll('.animated-gradient').forEach((el) => {
+     const element = el as HTMLElement;
+     element.style.background = `linear-gradient(to bottom right, ${uiSettings.gradient_from}, ${uiSettings.gradient_via}, ${uiSettings.gradient_to})`;
+     // Ensure animation properties are preserved
+     element.style.backgroundSize = '200% 200%';
+     element.style.animation = 'gradientShift 15s ease infinite';
+   })
+   ```
+
+4. **User Experience Improvement**:
+   - Users can now change gradient colors while maintaining the smooth animation effect
+   - The animation continues seamlessly after color changes are applied
+   - This creates a more cohesive and polished user experience
 
 ### March 14, 2024 - Updated 18:00 CET
 
