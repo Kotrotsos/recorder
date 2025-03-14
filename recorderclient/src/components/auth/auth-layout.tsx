@@ -103,8 +103,8 @@ export default function AuthLayout({ children, title, description }: AuthLayoutP
         </div>
         <nav className="flex items-center">
           <ul className="flex items-center space-x-6 text-sm font-medium text-white/80">
-            <li className="flex items-center"><Link href="#" className="hover:text-white transition-colors">About</Link></li>
-            <li className="flex items-center"><Link href="#" className="hover:text-white transition-colors">Pricing</Link></li>
+            <li className="flex items-center"><Link href="/about" className="hover:text-white transition-colors">About</Link></li>
+            <li className="flex items-center"><Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
           </ul>
         </nav>
       </header>

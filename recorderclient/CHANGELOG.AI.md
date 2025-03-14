@@ -459,6 +459,37 @@ This file documents all the changes made by AI assistance.
 - Applied consistent styling to navigation bars in PageContent, PricingPageClient, AboutPageClient, auth-layout, and terms-layout components
 - Ensured the "You are awesome, Goldmember" message, navigation links, and account buttons are all properly aligned
 
-## March 13, 2025 - 22:17 CET
+## March 14, 2025 - 12:18 CET
 
-// ... existing code ... 
+### Fixed
+- Fixed issue where summarizing a transcript would create duplicate cards
+- Modified the `processWithAI` function in `audio-recorder.tsx` to avoid creating duplicate cards
+- Improved the flow for saving summaries and analyses to the database
+- Ensured that only one card is created per summary/analysis operation
+- Added proper handling of the originalId to maintain the connection between summaries and their transcripts
+
+## March 14, 2025 - 12:31 CET
+
+### Fixed
+- Fixed non-working About and Pricing links in the account page navigation
+- Updated the links in the AuthLayout component to point to their respective pages
+- Changed placeholder "#" links to proper route paths ("/about" and "/pricing")
+- Ensured consistent navigation experience across the application
+
+## March 14, 2025 - 13:00 CET
+
+### Fixed
+- Fixed build error related to the audio-recorder component
+- Removed duplicate/fragment audio-recorder.tsx file from the root directory
+- Resolved "Cannot find name 'mediaRecorder'" type error
+- Fixed type error in createTranscription function call by passing recordingTime as a number instead of a string
+- Ensured clean build process by eliminating unnecessary files 
+
+## March 14, 2025 - 13:06 CET
+
+### Fixed
+- Fixed build errors related to missing Suspense boundaries in authentication pages
+- Added Suspense boundary around RegisterForm component that uses useSearchParams()
+- Added Suspense boundary around LoginForm component that uses useSearchParams()
+- Added appropriate loading fallback UI for both forms
+- Resolved "useSearchParams() should be wrapped in a suspense boundary" errors during build 

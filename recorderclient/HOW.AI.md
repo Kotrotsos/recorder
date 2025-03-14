@@ -881,3 +881,47 @@ The application includes comprehensive tools for debugging subscription status i
    - **Query Formatting**: Ensure proper OR conditions for status checks
    - **Authentication State**: Verify user is authenticated before checking subscriptions
    - **Database Constraints**: Handle NULL values and required fields properly 
+
+## Transcript Summarization Process
+
+### March 14, 2025
+
+The transcript summarization process in the audio recorder component follows these steps:
+
+1. **User Flow**:
+   - User records or uploads audio
+   - Audio is transcribed to text
+   - User selects "Summarize" from the AI actions
+   - System processes the transcript and generates a summary
+   - Summary is displayed as a card in the UI
+
+2. **Implementation Details**:
+   - The `processWithAI` function in `audio-recorder.tsx` handles the summarization process
+   - Initially creates a placeholder card with `generating: true` status
+   - Calls the `summarizeText` function which makes an API request to `/api/ai/summarize`
+   - The API route uses OpenAI to generate a summary with a specific prompt
+   - Updates the placeholder card with the generated content
+   - For authenticated users, saves the summary to the database
+   - Maintains a connection between the summary and its original transcript
+
+3. **Database Integration**:
+   - Summaries are stored in the `analyses` table with `analysis_type` set to "summary"
+   - Each summary can be linked to a transcription via the `transcription_id` field
+   - The `originalId` property in the UI maintains this connection
+   - The `originalIdMap` state tracks these relationships for the current session
+
+4. **Card Duplication Fix**:
+   - Previous implementation created two cards for each summary:
+     - One from updating the placeholder card
+     - Another when saving to the database
+   - Fixed by:
+     - First saving to the database to get the analysis ID
+     - Then updating the placeholder card with the content and originalId
+     - Avoiding the creation of a second card entirely
+   - This ensures only one card appears per summary while maintaining database integration
+
+5. **Transcript Reference**:
+   - Each summary card can expand to show its original transcript
+   - The transcript is fetched on demand using the `fetchTranscriptionForAnalysis` function
+   - This function uses the `originalId` to retrieve the associated transcript
+   - Transcripts are cached in the `transcriptMap` to avoid repeated fetching 

@@ -465,7 +465,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                         fileData.id,
                         "Recorded Audio Transcription",
                         transcript,
-                        recordingTime, // Use the recordingTime for recorded audio
+                        recordingTime, // Pass recordingTime as a number
                         { source: "recorder" }
                       );
                       
@@ -927,19 +927,8 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
           const content = result.content || result.result || "";
           const title = result.title || "Summary";
           
-          // Update the result card with the generated content
-          setProcessedResults(prev => prev.map(item => 
-            item.id === newId 
-              ? { 
-                  ...item, 
-                  content, 
-                  title, 
-                  generating: false 
-                } 
-              : item
-          ));
-          
           // Store the analysis in the database if user is authenticated
+          let analysisId = null;
           if (isAuthenticated) {
             try {
               // Use the lastTranscriptionId if available, otherwise use null
@@ -954,30 +943,31 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               );
               
               console.log("Summary saved to database");
-              
-              // Add the new result to the processed results
-              const newResult = {
-                id: Date.now(),
-                type: selectedAiAction,
-                content: result.success && result.content ? result.content : "Error generating summary",
-                title: result.title || "Summary",
-                generating: false,
-                date: new Date().toISOString(),
-                originalId: analysisData?.id
-              };
-              
-              // If we have an analysis ID, store it in the originalIdMap
-              if (analysisData?.id) {
-                setOriginalIdMap(prevMap => ({
-                  ...prevMap,
-                  [newResult.id]: analysisData.id
-                }));
-              }
-              
-              setProcessedResults(prev => [newResult, ...prev]);
+              analysisId = analysisData?.id;
             } catch (dbError) {
               console.error("Error saving summary to database:", dbError);
             }
+          }
+          
+          // Update the result card with the generated content and originalId if available
+          setProcessedResults(prev => prev.map(item => 
+            item.id === newId 
+              ? { 
+                  ...item, 
+                  content, 
+                  title, 
+                  generating: false,
+                  originalId: analysisId
+                } 
+              : item
+          ));
+          
+          // If we have an analysis ID, store it in the originalIdMap
+          if (analysisId) {
+            setOriginalIdMap(prevMap => ({
+              ...prevMap,
+              [newId]: analysisId
+            }));
           }
         } else {
           // Handle error
@@ -999,19 +989,8 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
           const content = result.content || result.result || "";
           const title = result.title || "Analysis";
           
-          // Update the result card with the generated content
-          setProcessedResults(prev => prev.map(item => 
-            item.id === newId 
-              ? { 
-                  ...item, 
-                  content,
-                  title,
-                  generating: false 
-                } 
-              : item
-          ));
-          
           // Store the analysis in the database if user is authenticated
+          let analysisId = null;
           if (isAuthenticated) {
             try {
               // Use the lastTranscriptionId if available, otherwise use null
@@ -1026,30 +1005,31 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               );
               
               console.log("Analysis saved to database");
-              
-              // Add the new result to the processed results
-              const newResult = {
-                id: Date.now(),
-                type: selectedAiAction,
-                content: result.success && result.content ? result.content : "Error generating analysis",
-                title: result.title || "Analysis",
-                generating: false,
-                date: new Date().toISOString(),
-                originalId: analysisData?.id
-              };
-              
-              // If we have an analysis ID, store it in the originalIdMap
-              if (analysisData?.id) {
-                setOriginalIdMap(prevMap => ({
-                  ...prevMap,
-                  [newResult.id]: analysisData.id
-                }));
-              }
-              
-              setProcessedResults(prev => [newResult, ...prev]);
+              analysisId = analysisData?.id;
             } catch (dbError) {
               console.error("Error saving analysis to database:", dbError);
             }
+          }
+          
+          // Update the result card with the generated content and originalId if available
+          setProcessedResults(prev => prev.map(item => 
+            item.id === newId 
+              ? { 
+                  ...item, 
+                  content,
+                  title,
+                  generating: false,
+                  originalId: analysisId
+                } 
+              : item
+          ));
+          
+          // If we have an analysis ID, store it in the originalIdMap
+          if (analysisId) {
+            setOriginalIdMap(prevMap => ({
+              ...prevMap,
+              [newId]: analysisId
+            }));
           }
         } else {
           // Handle error
@@ -1064,23 +1044,80 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               : item
           ));
         }
+      } else if (selectedAiAction === "transcribe") {
+        // For transcribe, we directly use the transcriptContent
+        const content = transcriptContent;
+        const title = "Transcription";
+        
+        // Store the transcription in the database if user is authenticated
+        if (isAuthenticated) {
+          try {
+            // Create a temporary file ID since we don't have a real file
+            const tempFileId = "temp-file-" + Date.now();
+            
+            // Create a transcription record
+            const transcriptionData = await createTranscription(
+              tempFileId,
+              title,
+              content,
+              recordingTime, // Duration as number
+              { source: "recorder", isDirectTranscription: true }
+            );
+            
+            console.log("Transcription saved to database");
+            
+            // Add the new result to the processed results
+            const newResult = {
+              id: Date.now(),
+              type: selectedAiAction,
+              content,
+              title,
+              generating: false,
+              date: new Date().toISOString(),
+              originalId: transcriptionData?.id
+            };
+            
+            // Update the lastTranscriptionId
+            if (transcriptionData?.id) {
+              setLastTranscriptionId(transcriptionData.id);
+              setLastTranscriptionNumericId(newResult.id);
+              
+              // Store the transcript content in the transcriptMap
+              setTranscriptMap(prevMap => ({
+                ...prevMap,
+                [newResult.id]: content
+              }));
+            }
+            
+            setProcessedResults(prev => [newResult, ...prev]);
+          } catch (dbError) {
+            console.error("Error saving transcription to database:", dbError);
+          }
+        }
       }
     } catch (error) {
-      console.error("Error in AI processing:", error);
+      console.error("Error processing with AI:", error);
       
       // Update the result card with the error
-      setProcessedResults(prev => prev.map(item => 
-        item.id === newId 
-          ? { 
-              ...item, 
-              content: `Error: ${error instanceof Error ? error.message : String(error)}`, 
-              title: "Error", 
-              generating: false 
-            } 
-          : item
-      ));
+      if (selectedAiAction !== "transcribe") {
+        setProcessedResults(prev => prev.map(item => 
+          item.id === newId 
+            ? { 
+                ...item, 
+                content: `Error: ${error instanceof Error ? error.message : "An unknown error occurred"}`, 
+                title: "Error", 
+                generating: false 
+              } 
+            : item
+        ));
+      }
     } finally {
       setAiProcessing(false);
+      
+      // Notify parent component of results change
+      if (onResultsChange) {
+        onResultsChange(processedResults);
+      }
     }
   };
 
