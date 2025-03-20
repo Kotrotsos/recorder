@@ -1532,3 +1532,28 @@ This change ensures that the background styling from parent containers properly 
 - `src/components/AboutPageClient.tsx` - Removed inline background style
 
 This change ensures that background styles from the UI settings context are not applied to main elements, preventing unwanted backgrounds from appearing on these elements.
+
+## March 20, 2025 - 16:18 CET
+
+### Enhanced
+- Improved mobile responsiveness in the audio recorder component
+- Added collapsible/expandable transcript section on mobile devices
+- Moved trash, play, and new controls next to the time indicator on mobile view
+- Implemented responsive design patterns to better utilize space on smaller screens
+- Added toggle functionality for the transcript visibility on mobile
+- Used media queries to conditionally display different UI elements based on screen size
+
+### Files Changed
+- Modified `src/components/audio/audio-recorder.tsx`
+
+## March 20, 2025 - 16:23 CET
+
+### Fixed
+- Fixed transcript collapse/expand functionality on mobile devices
+- Changed transcript maximum height from 60 to 300px for better readability
+- Ensured transcript content is properly hidden when collapsed on mobile
+- Improved CSS class implementation for the collapsible transcript feature
+- Fixed inconsistent behavior where the arrow would rotate but content wouldn't collapse/expand
+
+### Files Changed
+- Modified `src/components/audio/audio-recorder.tsx`

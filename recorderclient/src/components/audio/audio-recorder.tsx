@@ -57,6 +57,8 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
   // Sort direction state
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  // Add new state for transcript collapse on mobile
+  const [isTranscriptCollapsed, setIsTranscriptCollapsed] = useState<boolean>(true);
   
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -2317,39 +2319,77 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
             <TabsContent value="record" className="space-y-5">
               {/* Recording controls */}
               <div className="space-y-4">
-                {/* Timer display - show time remaining when recording, or elapsed time after recording */}
+                {/* Timer display with controls on mobile */}
                 {isRecording ? (
-                  <div className="text-center">
+                  <div className="text-center md:block flex items-center justify-between">
                     <div className="text-3xl font-mono font-bold text-white">
                       {formatTimeRemaining()}
                     </div>
-                    <div className="text-xs text-white/70 mt-1">
+                    <div className="text-xs text-white/70 mt-1 hidden md:block">
                       {isAuthenticated 
                         ? "Premium: 10 minute recording limit" 
                         : "Free: 5 minute recording limit"}
                     </div>
+                    {/* Mobile-only control while recording */}
+                    <div className="flex items-center space-x-2 md:hidden">
+                      <Button
+                        variant="destructive"
+                        style={getStopButtonStyles()}
+                        className="rounded-full p-0 flex items-center justify-center h-10 w-10"
+                        onClick={stopRecording}
+                      >
+                        <Square className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ) : isPostRecording && (
-                  <div className="text-center">
+                  <div className="text-center md:block flex items-center justify-between">
                     <span className="text-3xl font-mono font-bold text-white">
                       {formatTime(recordingTime)}
                     </span>
+                    {/* Controls on mobile */}
+                    <div className="flex items-center space-x-2 md:hidden">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="rounded-full w-10 h-10 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                        onClick={resetRecorder}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="rounded-full w-10 h-10 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                        onClick={togglePlayRecorded}
+                      >
+                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="rounded-full w-10 h-10 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                        onClick={resetRecorder}
+                      >
+                        <PlusCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 )}
 
-                {/* Control buttons */}
+                {/* Control buttons - hidden on mobile when post-recording */}
                 <div className="flex justify-center gap-4">
                   {isRecording ? (
                     <Button
                       variant="destructive"
                       style={getStopButtonStyles()}
-                      className="rounded-full p-0 flex items-center justify-center"
+                      className="rounded-full p-0 flex items-center justify-center md:flex hidden"
                       onClick={stopRecording}
                     >
                       <Square className="h-6 w-6" />
                     </Button>
                   ) : isPostRecording ? (
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 md:flex hidden">
                       <Button
                         variant="outline"
                         size="icon"
@@ -2477,7 +2517,13 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                   {/* Display transcript in the recorder card */}
                   <div className="mt-4 p-4 pb-0 bg-white/10 rounded-lg border border-white/20 text-sm text-white/90">
                     <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium text-white">Transcript</h4>
+                      <div 
+                        className="font-medium text-white flex items-center cursor-pointer"
+                        onClick={() => setIsTranscriptCollapsed(!isTranscriptCollapsed)}
+                      >
+                        <h4>Transcript</h4>
+                        <ChevronDown className={`ml-1 h-4 w-4 transition-transform duration-200 md:hidden ${isTranscriptCollapsed ? '' : 'transform rotate-180'}`} />
+                      </div>
                       {!aiProcessing && getTranscriptContent(lastTranscriptionNumericId || 0) && (
                         <Button
                           variant="ghost"
@@ -2501,7 +2547,11 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                         </Button>
                       )}
                     </div>
-                    <div className="whitespace-pre-line max-h-60 overflow-y-auto">
+                    <div className={`whitespace-pre-line transition-all duration-300 ${
+                      isTranscriptCollapsed 
+                      ? 'max-h-0 overflow-hidden md:max-h-[300px] md:overflow-y-auto' 
+                      : 'max-h-[300px] overflow-y-auto'
+                    }`}>
                       {aiProcessing ? (
                         <div className="flex items-center justify-center py-4">
                           <div className="animate-pulse">Generating transcript...</div>
@@ -2573,8 +2623,18 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                   
                   {/* Display transcript for uploaded file */}
                   <div className="mt-4 p-4 bg-white/10 rounded-lg border border-white/20 text-sm text-white/90">
-                    <h4 className="font-medium mb-2 text-white">Transcript</h4>
-                    <div className="whitespace-pre-line max-h-60 overflow-y-auto">
+                    <div 
+                      className="font-medium mb-2 text-white flex items-center cursor-pointer"
+                      onClick={() => setIsTranscriptCollapsed(!isTranscriptCollapsed)}
+                    >
+                      <h4 className="font-medium">Transcript</h4>
+                      <ChevronDown className={`ml-1 h-4 w-4 transition-transform duration-200 md:hidden ${isTranscriptCollapsed ? '' : 'transform rotate-180'}`} />
+                    </div>
+                    <div className={`whitespace-pre-line transition-all duration-300 ${
+                      isTranscriptCollapsed 
+                      ? 'max-h-0 overflow-hidden md:max-h-[300px] md:overflow-y-auto' 
+                      : 'max-h-[300px] overflow-y-auto'
+                    }`}>
                       {aiProcessing ? (
                         <div className="flex items-center justify-center py-4">
                           <div className="animate-pulse">Generating transcript...</div>

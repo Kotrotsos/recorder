@@ -3054,3 +3054,114 @@ Each mode also allows customization of the foreground color (text and UI element
 - Style application is batched and debounced to prevent excessive DOM operations
 - Animation is applied via CSS rather than JavaScript for better performance
 - Strategic timeouts and intervals prevent over-application of styles while ensuring consistency
+
+## Mobile Responsiveness in Audio Recorder
+
+### March 20, 2025
+
+The audio recorder component has been enhanced with improved mobile responsiveness features to provide a better user experience on smaller screens.
+
+### Implementation Details
+
+1. **Collapsible Transcript Area**:
+   - Added a new state variable `isTranscriptCollapsed` to track collapse state
+   - Default state is collapsed on mobile for a more compact interface
+   - Added a toggle mechanism with a chevron icon for expanding/collapsing
+   - Used CSS transitions for smooth open/close animations
+   - Implemented conditional classes with Tailwind's responsive prefixes to apply different styles based on screen size
+   ```jsx
+   const [isTranscriptCollapsed, setIsTranscriptCollapsed] = useState<boolean>(true);
+   
+   // In the UI:
+   <div 
+     className="font-medium text-white flex items-center cursor-pointer"
+     onClick={() => setIsTranscriptCollapsed(!isTranscriptCollapsed)}
+   >
+     <h4>Transcript</h4>
+     <ChevronDown className={`ml-1 h-4 w-4 transition-transform duration-200 md:hidden ${isTranscriptCollapsed ? '' : 'transform rotate-180'}`} />
+   </div>
+   <div className={`whitespace-pre-line max-h-60 overflow-y-auto transition-all duration-300 ${isTranscriptCollapsed ? 'max-h-0 md:max-h-60 overflow-hidden md:overflow-y-auto' : 'max-h-60'}`}>
+     {/* Transcript content */}
+   </div>
+   ```
+
+2. **Controls Next to Time Indicator**:
+   - Restructured the timer display to use a flex layout on mobile
+   - Moved the control buttons (trash, play, new) next to the time on small screens
+   - Used media queries (`md:`) to show/hide elements based on screen size
+   - Created smaller versions of buttons for mobile screens to conserve space
+   ```jsx
+   <div className="text-center md:block flex items-center justify-between">
+     <span className="text-3xl font-mono font-bold text-white">
+       {formatTime(recordingTime)}
+     </span>
+     {/* Controls on mobile */}
+     <div className="flex items-center space-x-2 md:hidden">
+       <Button
+         variant="outline"
+         size="icon"
+         className="rounded-full w-10 h-10 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+         onClick={resetRecorder}
+       >
+         <Trash2 className="h-4 w-4" />
+       </Button>
+       {/* Other controls */}
+     </div>
+   </div>
+   ```
+
+3. **Responsive Visibility Strategy**:
+   - Used a dual-component approach where one set of controls is shown on mobile and another on desktop
+   - Implemented this with Tailwind's responsive utilities: `md:flex hidden` and `md:hidden`
+   - Maintained the same functionality across device sizes while optimizing layout
+   - Example:
+   ```jsx
+   {/* Mobile-visible controls */}
+   <div className="flex items-center space-x-2 md:hidden">
+     {/* Control buttons for mobile */}
+   </div>
+   
+   {/* Desktop-visible controls */}
+   <div className="flex gap-3 md:flex hidden">
+     {/* Control buttons for desktop */}
+   </div>
+   ```
+
+### User Experience
+
+The mobile-optimized audio recorder provides several key UX improvements:
+
+1. **Space Efficiency**:
+   - Collapsible transcript frees up vertical space on small screens
+   - Placing controls next to the time indicator creates a more compact layout
+   - Smaller button sizes maintain functionality while reducing space requirements
+
+2. **Touch-Friendly Interactions**:
+   - Expanded touch targets for mobile controls
+   - Clear visual indication of collapsible areas with chevron icons
+   - Smooth animations for state transitions
+
+3. **Consistent Functionality**:
+   - All features remain available on mobile devices
+   - Critical functions (like recording, playing, deleting) are kept readily accessible
+   - Less important content (full transcript) is available but not taking up space by default
+
+### Technical Approach
+
+The implementation follows responsive design best practices:
+
+1. **Mobile-First Approach**:
+   - Default styles are optimized for mobile view
+   - Media queries add desktop-specific styles for larger screens
+   - This ensures the mobile experience is not an afterthought
+
+2. **Progressive Enhancement**:
+   - Core functionality works on all devices
+   - Enhanced layouts and interactions are added for devices that can support them
+   - No features are lost on smaller screens
+
+3. **Responsive Techniques Used**:
+   - Conditional rendering based on screen size (`md:hidden`, `md:flex`)
+   - Flexible layout models (flex containers with space-between)
+   - Dynamic sizing (smaller components on mobile)
+   - Collapsible content areas to conserve space
