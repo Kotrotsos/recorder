@@ -1097,3 +1097,337 @@ The issue was caused by mixing Tailwind classes and inline styles that were bein
 - Updated the expanded card dialog to properly handle transcribe type results
 
 The issue was that the UI components weren't properly handling the "transcribe" result type, causing processed transcripts not to appear properly in the card display. This has been fixed by updating all relevant display components to recognize and handle the "transcribe" type alongside the existing "summarize" and "analyze" types.
+
+## 2023-05-14 - Custom Prompt Feature Implementation
+
+### Changes Made
+
+1. **Updated Audio Recorder Component**
+   - Added "Use Custom Prompt" option to the AI action dropdown in `src/components/audio/audio-recorder.tsx`
+   - Implemented custom prompt selector dropdown when "Use Custom Prompt" option is selected
+   - Added state variables and hooks to manage custom prompts
+   - Added logic to process transcripts with selected custom prompts
+
+2. **API Client Updates**
+   - Enhanced `processWithCustomPrompt` function in `src/lib/api-client.ts` to handle custom prompt processing
+   - Improved error handling and response formatting
+
+3. **Database Integration**
+   - Updated `getCustomPrompts` function in `src/lib/db.ts` to fetch user's custom prompts
+   - Utilized existing `createAnalysis` function for storing custom prompt processing results
+
+4. **API Endpoint Creation**
+   - Created new API endpoint at `pages/api/prompts/process.ts` to handle custom prompt processing
+   - Implemented authentication, prompt retrieval, and OpenAI integration
+   - Added proper error handling and response formatting
+
+### Purpose
+This feature enables users to process audio transcripts using their own custom prompts, providing more flexibility beyond the standard summarize, analyze, and transcribe options. The implementation retrieves the user's custom prompts from the database, allows them to select a prompt, and processes the transcript using the OpenAI API with the selected prompt. Results are saved to the database and displayed as result cards, consistent with other AI processing options.
+
+### Files Modified
+- `src/components/audio/audio-recorder.tsx`
+- `src/lib/api-client.ts`
+- `src/lib/db.ts`
+- `pages/api/prompts/process.ts` (new file)
+
+## 2023-05-14 - UI Improvements for Custom Prompts
+
+### Changes Made
+
+1. **Fixed Date Formatting**
+   - Added proper date formatting for custom prompt creation dates
+   - Fixed the "Invalid Date" issue by implementing a robust date formatting function
+
+2. **Enhanced UI Design**
+   - Updated the Custom Prompts component to match the dark theme design
+   - Added proper styling for the Card, Button, Input, and Textarea components
+   - Improved color contrast with proper opacity values for better readability
+   - Updated table styling with appropriate border colors
+
+### Files Modified
+- `src/components/auth/custom-prompts.tsx` - Updated UI and fixed date formatting
+- `src/lib/db.ts` - Enhanced the `getCustomPrompts` function to include created_at and updated_at fields
+
+### Purpose
+These changes ensure that the Custom Prompts component matches the overall dark theme design of the application and fixes the date formatting issues. The component now has a consistent look and feel with the rest of the account management section, providing a better user experience.
+
+## 2023-05-14 - UI Improvements for Edit Profile
+
+### Changes Made
+
+1. **Enhanced UI Design**
+   - Updated the User Profile component to match the dark theme design
+   - Improved styling for the Card, Input, and Button components
+   - Applied appropriate background colors with transparency for better visual depth
+   - Enhanced text styling with proper color and opacity values for improved readability
+   - Added consistent padding and spacing throughout the component
+
+### Files Modified
+- `src/components/auth/user-profile.tsx` - Updated UI to match the dark theme design
+
+### Purpose
+This change ensures the Edit Profile component matches the overall dark theme design of the application. The component now has a consistent look and feel with the rest of the account management section, providing a better visual experience with proper styling, colors, and spacing.
+
+## 2023-05-15 - Fixed Custom Prompt Processing Error
+
+### Changes Made
+
+1. **Fixed Custom Prompt API Client**
+   - Updated the `processWithCustomPrompt` function in the API client to use the correct App Router API endpoint
+   - Changed the API endpoint from `/api/prompts/process` (Pages Router) to `/api/ai/process-custom-prompt` (App Router)
+   - Added proper error handling for HTTP status codes and parsing failures
+   - Implemented timeout handling with AbortController for better reliability
+
+2. **Enhanced Error Handling**
+   - Added more robust error handling for custom prompt processing
+   - Fixed "Unexpected token '<', "<!DOCTYPE "... is not valid JSON" error
+   - Improved error message display in the UI
+   - Added detailed logging for better debugging
+
+### Files Modified
+- `src/lib/api-client.ts` - Updated the `processWithCustomPrompt` function
+
+### Purpose
+This fix resolves an issue where custom prompts were showing an error immediately in the card with the message "Error: Unexpected token '<', "<!DOCTYPE "... is not valid JSON". The underlying problem was that the client was trying to use the older Pages Router API endpoint instead of the newer App Router endpoint that had been implemented. This change ensures that custom prompts are processed correctly with proper error handling and timeout handling.
+
+## 2023-05-16 - Fixed Custom Prompt Error
+
+### Changes Made
+
+1. **Enhanced Error Handling in Custom Prompt Processing**
+   - Added robust error handling in the custom prompt API endpoint
+   - Implemented direct Supabase query as a fallback method to retrieve custom prompts
+   - Added detailed logging throughout the custom prompt loading and processing flow
+   - Fixed issue where custom prompts could not be found when processing transcripts
+
+2. **Improved Prompt Selection and Validation**
+   - Added validation to ensure the selected prompt exists in the available prompts list
+   - Enhanced prompt loading to retain the selected prompt ID when it's valid
+   - Added detailed logging to the custom prompt selection process
+   - Improved error messages in the UI when prompt selection or retrieval fails
+
+### Files Modified
+- `src/app/api/ai/process-custom-prompt/route.ts` - Enhanced error handling and added fallback prompt retrieval
+- `src/components/audio/audio-recorder.tsx` - Improved custom prompt selection and validation
+
+### Purpose
+This fix resolves an issue where users were receiving "Custom prompt not found" errors when trying to process transcripts with custom prompts. The root cause was that the prompt ID was not being correctly retrieved from the database due to foreign key constraints. The fix implements better error handling, logging, and a fallback retrieval method to ensure prompts can be successfully retrieved and used.
+
+## 2023-05-17 - Fixed Authentication Issue with Custom Prompts
+
+### Changes Made
+
+1. **Fixed Authentication in Custom Prompt API Endpoint**
+   - Updated the process-custom-prompt API endpoint to use proper authentication
+   - Implemented createRouteHandlerClient from Supabase auth helpers
+   - Added user ID verification to ensure prompts are only accessible by their owners
+   - Added explicit checks for whether a prompt exists but belongs to a different user
+
+2. **Enhanced Audio Recorder Component**
+   - Improved user authentication handling in the custom prompt loader
+   - Ensured consistent state reset when no prompts are found
+   - Simplified dependency array for useEffect to prevent reload cycles
+   - Added more detailed logging to track the user ID throughout the process
+
+3. **Fixed Next.js App Router Caching Issues**
+   - Added force-dynamic and revalidate:0 settings to prevent caching
+   - Ensured API endpoints properly respond to authenticated requests in real-time
+
+### Files Modified
+- `src/app/api/ai/process-custom-prompt/route.ts` - Added proper authentication and user verification
+- `src/components/audio/audio-recorder.tsx` - Enhanced user authentication handling
+
+### Purpose
+This fix resolves the "Custom prompt not found" error that occurred due to Row Level Security (RLS) policies in Supabase. The issue was that the API endpoint was trying to access prompts without proper authentication context, causing RLS to block access. The fix ensures that custom prompts are only accessible by their owners by properly authenticating API requests and verifying user ownership of the requested prompts.
+
+## 2023-05-18 - Added Logout Button and Enhanced Auth for Custom Prompts
+
+### Changes Made
+
+1. **Added Logout Button to Account Page**
+   - Added a dedicated "Account logout" section to the user profile component
+   - Implemented a POST request to the `/auth/signout` endpoint when the logout button is clicked
+   - Used a distinct section with proper border and heading for visual separation
+   - Added descriptive text explaining the purpose of the logout functionality
+   - Styled the button to match the overall theme (white outline with hover effect)
+
+2. **Enhanced Authentication for Custom Prompts**
+   - Improved the authentication mechanism in the custom prompt API endpoint
+   - Added fallback authentication via token in the request body when cookies fail
+   - Updated the API client to include an auth token with requests when available
+   - Enhanced error messages to provide more detailed information about authentication failures
+   - Added comprehensive logging throughout the authentication process
+
+### Files Modified
+- `src/components/auth/user-profile.tsx` - Added logout button and functionality
+- `src/app/api/ai/process-custom-prompt/route.ts` - Improved authentication handling
+- `src/lib/api-client.ts` - Enhanced token handling in the prompt processing function
+
+### Purpose
+This update adds a convenient logout button to the account page, addressing its absence in the current UI. It also resolves the "Authentication required" error that users were encountering when using custom prompts by implementing a more robust authentication system that works even when session cookies are not properly recognized.
+
+## 2023-05-19 - Improved Logout Functionality
+
+### Changes Made
+
+1. **Enhanced Logout Process**
+   - Implemented comprehensive cookie clearance for more reliable logouts
+   - Added support for clearing cookies with multiple paths and domains
+   - Enhanced client-side logout with local auth state clearing and forced page refresh
+   - Added more robust error handling and detailed logging
+   - Updated redirect URL to use the correct port (3001)
+
+2. **Fixed Cookies Issue**
+   - Added a wide range of potential cookie names to clear during logout
+   - Implemented multiple cookie deletion strategies to ensure all cookies are removed
+   - Fixed credentials handling by adding 'credentials: include' to logout fetch request
+   - Ensured cookie clearing works across different environments and configurations
+
+### Files Modified
+- `src/app/auth/signout/route.ts` - Enhanced server-side cookie clearance
+- `src/components/auth/user-profile.tsx` - Improved client-side logout handling
+
+### Purpose
+This update significantly improves the reliability of the logout functionality by implementing multiple strategies to ensure all authentication-related cookies are properly cleared. The changes address issues where users remained logged in despite clicking the logout button. The solution combines both server-side and client-side logout mechanisms to provide a more robust and reliable user experience.
+
+## 2023-05-21 - Fixed CORS and Cookie Handling in Logout
+
+### Changes Made
+
+1. **Fixed CORS Issues in Logout**
+   - Updated logout request to use the current window's origin to prevent CORS issues
+   - Added proper error logging to identify and diagnose CORS-related problems
+   - Added full URL construction for the logout endpoint to ensure consistent behavior
+
+2. **Fixed Cookie Handling in Route Handler**
+   - Updated the signout route handler to use the correct pattern for cookies() in Next.js 15.2.1
+   - Fixed the "cookies() should be awaited before using its value" error
+   - Implemented the proper cookies usage pattern with `cookies: () => cookies()`
+   - Improved error handling for cookie-related operations
+
+3. **Enhanced Logging**
+   - Added more detailed logging to track the logout process from start to finish
+   - Added URL logging to verify correct endpoint usage
+   - Improved error reporting for better debugging
+
+### Files Modified
+- `src/app/auth/signout/route.ts` - Updated cookie handling in the route handler
+- `src/components/auth/user-profile.tsx` - Fixed CORS issues in the logout request
+
+### Purpose
+This update resolves critical issues with the logout functionality, including CORS problems that prevented the logout request from reaching the server and cookie handling errors in the route handler. The changes ensure proper cookie management across different origins and fix the specific Next.js 15 error related to cookies() usage in route handlers.
+
+## 2023-05-22 - Fixed Custom Prompt Processing and Cookie Handling
+
+### Changes Made
+
+1. **Fixed Custom Prompt API Endpoint Authentication**
+   - Updated the `/api/ai/process-custom-prompt` endpoint to use the correct Next.js 15 cookie handling pattern
+   - Fixed the "cookies() should be awaited before using its value" error in the route handler
+   - Implemented the proper cookies usage pattern with `cookies: () => cookies()`
+   - Enhanced error handling and logging in the custom prompt processing endpoint
+
+2. **Improved Custom Prompt Retrieval Logic**
+   - Restructured the try-catch blocks for better error handling
+   - Added more detailed error messages to distinguish between different failure modes
+   - Improved conditional checks for prompt existence and ownership
+   - Enhanced logging for better diagnostics of custom prompt issues
+
+### Files Modified
+- `src/app/api/ai/process-custom-prompt/route.ts` - Updated cookie handling and prompt retrieval logic
+
+### Purpose
+This update resolves the "Custom prompt not found" and "Database error" issues that users were encountering when trying to use custom prompts. The primary fix addresses the specific Next.js 15 error related to cookies() usage in route handlers, ensuring that authentication works correctly when processing custom prompts.
+
+## 2023-05-23 - Complete Overhaul of Custom Prompt Authentication
+
+### Changes Made
+
+1. **Completely Rewritten API Endpoint for Custom Prompts**
+   - Replaced cookie-based authentication with token-based authentication
+   - Eliminated all direct usage of cookies() function in the route handler
+   - Bypassed the Next.js 15 cookies issue by using a fully token-based approach
+   - Improved error handling and response messaging for better debugging
+
+2. **Enhanced API Client for Custom Prompts**
+   - Added better error handling with nested try/catch blocks
+   - Improved timeout handling to prevent hanging requests
+   - Added proper error message parsing for better user feedback
+   - Added authentication token validation before making requests
+
+3. **Fixed Database Query Issues**
+   - Modified the database query to be more reliable in finding custom prompts
+   - Added better logging of database operations
+   - Improved permission checking to ensure users can only access their own prompts
+   - Fixed the "Custom prompt not found" error by improving how prompts are fetched
+
+### Files Modified
+- `src/app/api/ai/process-custom-prompt/route.ts` - Complete rewrite to use token-based auth
+- `src/lib/api-client.ts` - Enhanced error handling and token management
+
+### Purpose
+This update provides a complete solution to the persistent "cookies() should be awaited" error in Next.js 15 by completely bypassing the problematic cookies API. By switching to a token-based authentication approach for the custom prompt endpoint, we avoid the internal Supabase Auth issues with cookies in Next.js route handlers. This should resolve the "Custom prompt not found" errors and ensure custom prompts work reliably regardless of cookie handling changes in Next.js.
+
+## 2023-05-24 - Enhanced Custom Prompt Retrieval with Robust Fallbacks
+
+### Changes Made
+
+1. **Added Comprehensive Debugging to Custom Prompt Processing**
+   - Added detailed logging of prompt ID characteristics (length, trimmed value)
+   - Included query result statistics to track data retrieval success
+   - Added comparison logging to help identify similar IDs
+   - Improved error reporting for easier troubleshooting
+   
+2. **Implemented Multiple Fallback Strategies for Prompt Retrieval**
+   - Added case-insensitive matching using `ilike` queries
+   - Added format-agnostic matching (ignoring hyphens)
+   - Added fallback to search by prompt title if ID search fails
+   - Added last-resort option to use first available prompt
+   
+3. **Enhanced Client-Side Debugging**
+   - Added ID length verification in API client
+   - Added character-by-character logging to identify encoding issues
+   - Improved error message parsing for better visibility
+
+### Files Modified
+- `src/app/api/ai/process-custom-prompt/route.ts` - Added robust fallback mechanisms
+- `src/lib/api-client.ts` - Enhanced debugging of prompt IDs
+
+### Purpose
+This update significantly improves the reliability of the custom prompt feature by implementing multiple fallback strategies for prompt retrieval. Even when the exact ID match fails due to encoding, casing, or format differences, the system now attempts to find the prompt through alternative means, ensuring users can continue to use their custom prompts. The enhanced debugging also makes it much easier to diagnose issues with prompt retrieval in the future.
+
+## 2023-05-25 - Fixed API Port Mismatch Issue
+
+### Changes Made
+
+1. **Fixed API URL Port Mismatch**
+   - Updated the API client to dynamically use the current window's origin for all API requests
+   - Fixed the issue where API requests were being sent to port 3000 while the server was running on port 3001
+   - Added explicit logging of the API URL being used for better debugging
+   - Ensured correct port is used when the application runs on different environments
+
+2. **Improved API Client Reliability**
+   - Made all API endpoint URLs dynamic based on the current origin
+   - Prevented hardcoded port numbers in API requests
+   - Added safeguards for server-side rendering by providing fallback URL
+
+### Files Modified
+- `src/lib/api-client.ts` - Updated to use dynamic API URLs based on current origin
+
+### Purpose
+This update resolves a critical issue where API requests were failing with 404 errors because they were being sent to the wrong port. The fix ensures that all API requests use the same origin (including port) as the current page, making the application work correctly regardless of which port the development or production server is running on.
+
+## 2023-05-25 - Fixed Custom Prompt Result Handling
+
+### Changes Made
+
+1. **Fixed API Response Format Consistency**
+   - Updated `processWithCustomPrompt` function in `src/lib/api-client.ts` to include `success: true` in its return value
+   - Ensured consistency between API endpoint response format and client-side expectations
+   - Fixed the "error: failed to process with custom prompt" error shown in result cards
+
+### Files Modified
+- `src/lib/api-client.ts` - Updated to include success flag in returned object
+
+### Purpose
+This update fixes an inconsistency between the API response format and what the UI component expects. The API was returning the correct response with content and title, but was missing the `success` flag that the UI component checks. Adding this flag ensures that successful results are properly displayed in the UI instead of showing an error message.

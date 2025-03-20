@@ -2,6 +2,8 @@
  * API Client for handling transcription and AI requests
  */
 
+import { createClient } from '@/lib/supabase';
+
 /**
  * Send audio for transcription
  * @param audioBlob The audio blob to transcribe
@@ -431,5 +433,101 @@ export async function processTranscript(text: string, processingType: 'keep-as-i
       success: false,
       error: error instanceof Error ? error.message : String(error)
     };
+  }
+}
+
+/**
+ * Process a transcript with a custom prompt
+ * @param transcript The transcript to process
+ * @param promptId The ID of the custom prompt to use
+ * @returns The processed content and title
+ */
+export async function processWithCustomPrompt(transcript: string, promptId: string) {
+  try {
+    // Get the auth token from Supabase client for authentication
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const authToken = session?.access_token;
+    
+    if (!authToken) {
+      throw new Error("Not authenticated. Please log in to use custom prompts.");
+    }
+    
+    console.log(`Processing transcript with custom prompt ID: ${promptId}`);
+    console.log(`Prompt ID length: ${promptId.length}`);
+    console.log(`First 8 chars: ${promptId.substring(0, 8)}, Last 8 chars: ${promptId.substring(promptId.length - 8)}`);
+    
+    // Get the current origin for API requests to ensure correct port
+    const apiBaseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const apiUrl = `${apiBaseUrl}/api/ai/process-custom-prompt`;
+    
+    console.log(`Using API URL: ${apiUrl}`);
+    
+    // Use AbortController to set a timeout for the request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30-second timeout
+    
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          transcript, 
+          promptId,
+          authToken // Include auth token for authentication
+        }),
+        credentials: 'include',
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      // Log the response status for debugging
+      console.log(`Custom prompt processing response status: ${response.status}`);
+      
+      // Handle HTTP errors
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `Error ${response.status}: ${response.statusText}`;
+        
+        try {
+          // Try to parse as JSON for structured error
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // If not JSON, use the raw text if available
+          if (errorText) errorMessage = errorText;
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      // Parse response data
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Unknown error occurred');
+      }
+      
+      return {
+        success: true,
+        content: data.content,
+        title: data.title
+      };
+    } catch (innerError: any) {
+      clearTimeout(timeoutId);
+      
+      // Handle AbortController abort() error
+      if (innerError.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.');
+      }
+      
+      throw innerError;
+    }
+  } catch (error: any) {
+    console.error('Error processing with custom prompt:', error);
+    throw error;
   }
 } 

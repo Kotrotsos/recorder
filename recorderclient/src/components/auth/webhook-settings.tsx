@@ -9,8 +9,11 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { User } from '@supabase/supabase-js'
 
-export default function WebhookSettings() {
-  const [user, setUser] = useState<User | null>(null)
+interface WebhookSettingsProps {
+  user: User;
+}
+
+export default function WebhookSettings({ user }: WebhookSettingsProps) {
   const [loading, setLoading] = useState(true)
   const [webhookUrl, setWebhookUrl] = useState('')
   const [webhookEvent, setWebhookEvent] = useState('transcription_created')
@@ -23,8 +26,6 @@ export default function WebhookSettings() {
     const getUser = async () => {
       setLoading(true)
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        setUser(user)
         if (user) {
           // Fetch webhook settings from the database
           const { data, error } = await supabase
@@ -46,7 +47,7 @@ export default function WebhookSettings() {
     }
 
     getUser()
-  }, [supabase.auth])
+  }, [supabase.auth, user])
 
   const handleSaveWebhook = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -2665,3 +2665,340 @@ For transcript processing, the application needs to satisfy the database foreign
 4. Marking the record with `isPlaceholder: true` for future reference
 
 This approach ensures database integrity while allowing for transcript-only operations.
+
+## Custom Prompt Processing
+
+### Overview
+The custom prompt feature allows users to process audio transcripts using their own defined prompts. This provides flexibility beyond the standard AI actions (summarize, analyze, transcribe).
+
+### Implementation Details
+
+#### Custom Prompt Storage
+- Custom prompts are stored in the `custom_prompts` table in the Supabase database
+- Each prompt has:
+  - `id`: Unique identifier
+  - `user_id`: The user who created the prompt
+  - `title`: The name of the prompt
+  - `prompt_text`: The actual prompt text to be sent to the AI
+  - `created_at`: Timestamp of creation
+
+#### Audio Recorder Integration
+The audio recorder component (`src/components/audio/audio-recorder.tsx`) has been enhanced to support custom prompts:
+
+1. **UI Components**:
+   - "Use Custom Prompt" option in the AI action dropdown (only visible when user is authenticated)
+   - Custom prompt selector dropdown that appears when this option is selected
+   - Loading state for prompts and error handling when no prompts are found
+
+2. **Data Flow**:
+   - When the user selects "Use Custom Prompt", the component loads the user's custom prompts
+   - The user selects a prompt from the dropdown
+   - When the "Process with Custom Prompt" button is clicked, the transcript is sent to the API along with the selected prompt ID
+
+3. **Processing**:
+   - The API endpoint (`pages/api/prompts/process.ts`) retrieves the prompt text from the database
+   - The transcript and prompt are sent to OpenAI for processing
+   - The result is returned and displayed in a result card
+   - If the user is authenticated, the result is saved to the database as an analysis record with type "custom-prompt"
+
+#### API Implementation
+The processing endpoint (`pages/api/prompts/process.ts`):
+1. Authenticates the user
+2. Validates the input (transcript and promptId)
+3. Retrieves the custom prompt from the database
+4. Sends the prompt and transcript to OpenAI
+5. Returns the processed result with the prompt title
+
+#### Integration with Existing Features
+- Results from custom prompt processing are displayed in result cards in the same way as other AI processing results
+- Results are saved to the database using the existing `createAnalysis` function
+- Custom prompt results can be shared, saved, and managed like other results
+
+### Error Handling
+- Missing transcript or promptId returns a 400 error
+- Unauthenticated requests return a 401 error
+- Prompt not found returns a 404 error
+- OpenAI errors or other unexpected issues return a 500 error
+- All errors are displayed to the user in the result card
+
+### Security Considerations
+- The API endpoint verifies that the requested prompt belongs to the authenticated user
+- Custom prompts are only accessible to their creators
+- Authentication is required for both creating and using custom prompts
+
+## Logout Mechanism
+
+The application uses a two-pronged approach to ensure reliable user logout:
+
+## Server-Side Logout (API Route)
+
+The server-side logout is handled by a dedicated API route at `/auth/signout`. This route:
+
+1. Uses Supabase's built-in `signOut()` method to clear the session
+2. Creates a redirect response to the home page
+3. Explicitly clears all possible authentication cookies:
+   - Tries multiple cookie names related to Supabase auth
+   - Clears cookies with different path configurations
+   - Clears cookies with domain-specific settings when applicable
+4. Provides detailed logging for debugging logout issues
+
+### Important: Cookie Handling in Next.js 15+
+
+In Next.js 15+, the `cookies()` function needs to be handled carefully in Route Handlers:
+
+```typescript
+// src/app/auth/signout/route.ts
+export async function POST() {
+  // Proper way to use cookies() in Next.js 15+
+  const supabase = createRouteHandlerClient({ 
+    cookies: () => cookies() 
+  })
+  
+  // Rest of the signout logic...
+}
+```
+
+This pattern prevents the "cookies() should be awaited before using its value" error that can occur in Next.js 15+ when cookies are not properly handled.
+
+## Client-Side Logout (React Component)
+
+The client-side logout complements the server-side mechanism:
+
+1. Makes a POST request to the current origin's `/auth/signout` endpoint
+2. Ensures cookies are included with the request using `credentials: 'include'`
+3. Also calls Supabase's client-side `signOut()` method to clear any local state
+4. Uses `window.location.replace()` instead of normal navigation for a full page refresh
+5. Implements a delay to ensure cookie clearing completes before redirect
+
+```typescript
+// src/components/auth/user-profile.tsx
+const handleLogout = async () => {
+  try {
+    // Use the current window's origin to prevent CORS issues
+    const baseUrl = window.location.origin;
+    const logoutUrl = `${baseUrl}/auth/signout`;
+    
+    const response = await fetch(logoutUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // Important for cookies
+    });
+    
+    if (response.ok) {
+      // Also clear client-side auth state
+      await supabase.auth.signOut();
+      
+      // Force a full page refresh with replace
+      setTimeout(() => {
+        window.location.replace('/');
+      }, 500);
+    }
+  } catch (error) {
+    // Error handling
+  }
+};
+```
+
+### Important: CORS Considerations
+
+To prevent CORS issues:
+1. Always use the current window's origin when constructing the logout URL
+2. Include the `credentials: 'include'` option in the fetch request
+3. Ensure the server's response has appropriate CORS headers when needed
+
+This dual approach ensures that authentication state is properly cleared both on the server and in the client, providing a more reliable logout experience across different browsers and environments.
+
+## Authentication Handling in API Routes
+
+All API routes that require authentication should use the following pattern to properly handle cookies in Next.js 15:
+
+```typescript
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+
+export async function POST(request: Request) {
+  // Create Supabase client with the proper cookie handling pattern for Next.js 15+
+  const supabase = createRouteHandlerClient({ 
+    cookies: () => cookies() 
+  });
+  
+  // Now use the authenticated client
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  // Rest of your API route logic...
+}
+```
+
+This pattern:
+1. Passes a function to the cookies parameter, not the cookies object directly
+2. Prevents the "cookies() should be awaited before using its value" error
+3. Works correctly with both App Router and Pages Router
+4. Ensures proper authentication across different API routes
+
+For all routes that process user-specific data (transcripts, custom prompts, analyses), this pattern should be used to ensure proper authentication and data access security.
+
+## Token-Based Authentication in API Routes (For Next.js 15+)
+
+In Next.js 15, there are issues with the `cookies()` function in route handlers, especially when using Supabase Auth. A more reliable approach is to use token-based authentication:
+
+```typescript
+import { createClient } from '@/lib/supabase';
+
+export async function POST(request: Request) {
+  try {
+    // Get auth token from request body
+    const { authToken, ...otherData } = await request.json();
+    
+    if (!authToken) {
+      return Response.json({ error: "Authentication required" }, { status: 401 });
+    }
+    
+    // Create client and authenticate with token
+    const supabase = createClient();
+    const { data: { user }, error } = await supabase.auth.getUser(authToken);
+    
+    if (error || !user) {
+      return Response.json({ error: "Invalid authentication" }, { status: 401 });
+    }
+    
+    // User is authenticated, proceed with the user ID
+    const userId = user.id;
+    
+    // Rest of your API logic...
+  } catch (error) {
+    // Error handling
+  }
+}
+```
+
+When calling these endpoints from the client:
+
+```typescript
+// In your client-side code (e.g., api-client.ts)
+export async function callProtectedEndpoint(data: any) {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  const authToken = session?.access_token;
+  
+  if (!authToken) {
+    throw new Error("Not authenticated");
+  }
+  
+  const response = await fetch('/api/your-endpoint', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      ...data,
+      authToken // Include the token in the request body
+    })
+  });
+  
+  // Response handling
+}
+```
+
+This approach bypasses the cookies-related issues in Next.js 15 route handlers while still maintaining proper authentication. It's especially useful for endpoints like custom prompt processing where cookie handling has proven problematic.
+
+## Robust Custom Prompt Retrieval
+
+The custom prompt retrieval system employs multiple fallback strategies to ensure the most reliable user experience when retrieving prompts by ID:
+
+### Multiple Retrieval Strategies
+
+1. **Primary Strategy: Exact ID Match**
+   - First attempts to find the prompt using an exact match on ID
+   - Uses standard Supabase `.eq('id', promptId)` equality matching
+
+2. **First Fallback: Case-Insensitive Matching**
+   - If exact match fails, tries case-insensitive matching
+   - Uses Supabase `.ilike('id', promptId)` for flexible matching
+   
+3. **Second Fallback: Format-Agnostic Matching**
+   - Normalizes IDs by removing hyphens and comparing
+   - Useful when IDs get mangled during transmission
+   
+4. **Third Fallback: Title Matching**
+   - If ID matching fails, tries to match by prompt title
+   - Useful when user mistakenly uses title instead of ID
+   
+5. **Final Fallback: First Available Prompt**
+   - As a last resort, uses the first prompt belonging to the user
+   - Ensures the user can still use the feature even with retrieval issues
+
+### Implementation Example
+
+```typescript
+// First try exact match
+const { data } = await supabase
+  .from('custom_prompts')
+  .select('*')
+  .eq('id', promptId);
+
+if (!data || data.length === 0) {
+  // Try case-insensitive matching
+  const { data: dataLike } = await supabase
+    .from('custom_prompts')
+    .select('*')
+    .ilike('id', promptId);
+    
+  if (dataLike && dataLike.length > 0) {
+    return usePrompt(dataLike[0]);
+  }
+  
+  // Get all user prompts for additional fallbacks
+  const { data: userPrompts } = await supabase
+    .from('custom_prompts')
+    .select('*')
+    .eq('user_id', userId);
+    
+  if (userPrompts && userPrompts.length > 0) {
+    // Try format-agnostic matching
+    const matchingPrompt = userPrompts.find(p => 
+      p.id.replace(/-/g, '') === promptId.replace(/-/g, '')
+    );
+    
+    if (matchingPrompt) {
+      return usePrompt(matchingPrompt);
+    }
+    
+    // Try title matching
+    const titleMatch = userPrompts.find(p => 
+      p.title.toLowerCase().includes(promptId.toLowerCase())
+    );
+    
+    if (titleMatch) {
+      return usePrompt(titleMatch);
+    }
+    
+    // Last resort: use first available
+    return usePrompt(userPrompts[0]);
+  }
+}
+```
+
+This approach ensures maximum resilience against ID encoding issues, user errors, and database edge cases.
+
+## Dynamic API URLs
+
+To ensure API requests work correctly regardless of the port or domain where the application is running, all API requests should be made using dynamic URLs based on the current window's origin:
+
+```typescript
+// Get the current origin for API requests
+const apiBaseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+const apiUrl = `${apiBaseUrl}/api/endpoint-path`;
+
+// Use the dynamic URL for fetch requests
+const response = await fetch(apiUrl, {
+  method: 'POST',
+  // ... other fetch options
+});
+```
+
+This approach solves several issues:
+
+1. **Port mismatches**: When the development server runs on a different port than expected (e.g., 3001 instead of 3000), requests will still work correctly
+2. **Cross-origin issues**: Prevents CORS errors by ensuring requests go to the same origin as the page
+3. **Environment adaptability**: Works correctly in development, staging, and production without changes
+4. **Server-side rendering compatibility**: Includes a fallback for server-side contexts where `window` is not available
+
+All API client functions should follow this pattern to ensure consistent behavior across different environments and deployment scenarios.

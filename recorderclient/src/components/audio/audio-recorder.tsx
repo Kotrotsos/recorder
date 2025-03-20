@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { transcribeAudio, summarizeText, analyzeText, translateText, processTranscript } from "@/lib/api-client"
+import { transcribeAudio, summarizeText, analyzeText, translateText, processTranscript, processWithCustomPrompt } from "@/lib/api-client"
 import { toast } from "sonner"
 import { useDatabase } from '@/hooks/useDatabase'
 import {
@@ -28,6 +28,8 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog"
+import { createClient } from '@/lib/supabase'
+import { getCustomPrompts } from '@/lib/db'
 
 interface AudioRecorderProps {
   isAuthenticated: boolean;
@@ -1180,6 +1182,115 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               : item
           ));
         }
+      } else if (selectedAiAction === "custom-prompt") {
+        if (!selectedPromptId) {
+          // Handle error - no prompt selected
+          console.error("No custom prompt selected");
+          setProcessedResults(prev => prev.map(item => 
+            item.id === newId 
+              ? { 
+                  ...item, 
+                  content: "Error: No custom prompt selected", 
+                  title: "Error", 
+                  generating: false 
+                } 
+              : item
+          ));
+          return;
+        }
+
+        try {
+          console.log("Processing with custom prompt ID:", selectedPromptId);
+          
+          // Check if the selectedPromptId is valid
+          const selectedPrompt = customPrompts.find(p => p.id === selectedPromptId);
+          if (!selectedPrompt) {
+            console.error("Selected prompt not found in customPrompts list. Selected ID:", selectedPromptId, "Available prompts:", customPrompts);
+            throw new Error("Selected prompt not found in the list of available prompts");
+          }
+          
+          console.log("Using prompt:", selectedPrompt.title);
+          
+          // Process transcript with the selected custom prompt
+          const result = await processWithCustomPrompt(transcriptContent, selectedPromptId);
+          
+          console.log("Custom prompt processing result:", result);
+          
+          if (result.success) {
+            const content = result.content || "";
+            const title = result.title || "Custom Processing Result";
+            
+            // Store the result in the database if user is authenticated
+            let analysisId = null;
+            if (isAuthenticated) {
+              try {
+                // Use the lastTranscriptionId if available, otherwise use null
+                const transcriptionId = lastTranscriptionId || null;
+                
+                const analysisData = await createAnalysis(
+                  transcriptionId,
+                  title,
+                  content,
+                  "custom-prompt",
+                  { source: "recorder", customPromptId: selectedPromptId }
+                );
+                
+                console.log("Custom prompt result saved to database");
+                analysisId = analysisData?.id;
+              } catch (dbError) {
+                console.error("Error saving custom prompt result to database:", dbError);
+              }
+            }
+            
+            // Update the result card with the processed content
+            setProcessedResults(prev => prev.map(item => 
+              item.id === newId 
+                ? { 
+                    ...item, 
+                    content,
+                    title,
+                    generating: false,
+                    originalId: analysisId
+                  } 
+                : item
+            ));
+            
+            // If we have an analysis ID, store it in the originalIdMap
+            if (analysisId) {
+              setOriginalIdMap(prevMap => ({
+                ...prevMap,
+                [newId]: analysisId
+              }));
+            }
+          } else {
+            console.error("Custom prompt processing failed:", result.error);
+            // Handle error
+            setProcessedResults(prev => prev.map(item => 
+              item.id === newId 
+                ? { 
+                    ...item, 
+                    content: `Error: ${result.error || "Failed to process with custom prompt"}`, 
+                    title: "Error", 
+                    generating: false 
+                  } 
+                : item
+            ));
+          }
+        } catch (error) {
+          console.error("Error processing with custom prompt:", error);
+          
+          // Update the result card with an error
+          setProcessedResults(prev => prev.map(item => 
+            item.id === newId 
+              ? { 
+                  ...item, 
+                  content: `Error: ${error instanceof Error ? error.message : "An unknown error occurred"}`, 
+                  title: "Error", 
+                  generating: false 
+                } 
+              : item
+          ));
+        }
       }
     } catch (error) {
       console.error("Error processing with AI:", error);
@@ -1848,6 +1959,63 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     }
   };
 
+  // Add state variables for custom prompts
+  const [customPrompts, setCustomPrompts] = useState<Array<{ id: string; title: string }>>([])
+  const [selectedPromptId, setSelectedPromptId] = useState<string>('')
+  const [isLoadingPrompts, setIsLoadingPrompts] = useState(false)
+
+  // Add a useEffect hook to load custom prompts
+  useEffect(() => {
+    const loadCustomPrompts = async () => {
+      if (isAuthenticated && selectedAiAction === 'custom-prompt') {
+        setIsLoadingPrompts(true)
+        try {
+          console.log("Loading custom prompts...");
+          const supabase = createClient()
+          const { data: { user } } = await supabase.auth.getUser()
+          
+          if (user) {
+            const userId = user.id;
+            console.log("User authenticated, getting prompts for user ID:", userId);
+            const prompts = await getCustomPrompts(userId)
+            console.log("Prompts returned from DB:", prompts);
+            
+            if (prompts && prompts.length > 0) {
+              const formattedPrompts = prompts.map(p => ({ id: p.id, title: p.title }));
+              console.log("Formatted prompts:", formattedPrompts);
+              setCustomPrompts(formattedPrompts);
+              
+              // Only set the selected prompt ID if it's not already set, or if the current ID isn't in the list
+              const promptExists = prompts.some(p => p.id === selectedPromptId);
+              if (!selectedPromptId || !promptExists) {
+                console.log("Setting selected prompt ID to:", prompts[0].id);
+                setSelectedPromptId(prompts[0].id);
+              } else {
+                console.log("Keeping existing selected prompt ID:", selectedPromptId);
+              }
+            } else {
+              console.warn("No prompts found for user", userId);
+              setCustomPrompts([]);
+              setSelectedPromptId('');
+            }
+          } else {
+            console.warn("No authenticated user found");
+            setCustomPrompts([]);
+            setSelectedPromptId('');
+          }
+        } catch (error) {
+          console.error('Error loading custom prompts:', error)
+          setCustomPrompts([]);
+          setSelectedPromptId('');
+        } finally {
+          setIsLoadingPrompts(false)
+        }
+      }
+    }
+    
+    loadCustomPrompts()
+  }, [isAuthenticated, selectedAiAction])
+
   return (
     <>
       {processedResults.length > 0 && (
@@ -2240,6 +2408,9 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                       <SelectItem value="summarize" className="text-base focus:bg-white/10 focus:text-white">Summarize</SelectItem>
                       <SelectItem value="analyze" className="text-base focus:bg-white/10 focus:text-white">Analyze</SelectItem>
                       <SelectItem value="transcribe" className="text-base focus:bg-white/10 focus:text-white">Process Transcript</SelectItem>
+                      {isAuthenticated && (
+                        <SelectItem value="custom-prompt" className="text-base focus:bg-white/10 focus:text-white">Use Custom Prompt</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
 
@@ -2263,6 +2434,33 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                     </Select>
                   )}
 
+                  {selectedAiAction === "custom-prompt" && (
+                    <Select
+                      value={selectedPromptId}
+                      onValueChange={setSelectedPromptId}
+                    >
+                      <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30">
+                        <SelectValue placeholder={isLoadingPrompts ? "Loading prompts..." : "Select a prompt"} />
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
+                          <path d="m6 9 6 6 6-6"/>
+                        </svg>
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-white/20 text-white">
+                        {customPrompts.length > 0 ? (
+                          customPrompts.map(prompt => (
+                            <SelectItem key={prompt.id} value={prompt.id} className="text-base focus:bg-white/10 focus:text-white">
+                              {prompt.title}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="px-2 py-4 text-center text-white/60 text-sm">
+                            No custom prompts found. Create them in your account settings.
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  )}
+
                   <Button
                     variant="default"
                     className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white h-12 text-base"
@@ -2271,7 +2469,9 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                   >
                     {aiProcessing ? "Processing..." : selectedAiAction === "transcribe" 
                       ? `Process ${transcriptProcessingType === 'keep-as-is' ? 'Transcript' : transcriptProcessingType === 'condense' ? 'Condensed Transcript' : 'Expanded Transcript'}`
-                      : `${selectedAiAction.charAt(0).toUpperCase() + selectedAiAction.slice(1)} Audio`}
+                      : selectedAiAction === "custom-prompt"
+                        ? "Process with Custom Prompt"
+                        : `${selectedAiAction.charAt(0).toUpperCase() + selectedAiAction.slice(1)} Audio`}
                   </Button>
                   
                   {/* Display transcript in the recorder card */}
@@ -2401,6 +2601,9 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                         <SelectItem value="summarize" className="text-base focus:bg-white/10 focus:text-white">Summarize</SelectItem>
                         <SelectItem value="analyze" className="text-base focus:bg-white/10 focus:text-white">Analyze</SelectItem>
                         <SelectItem value="transcribe" className="text-base focus:bg-white/10 focus:text-white">Process Transcript</SelectItem>
+                        {isAuthenticated && (
+                          <SelectItem value="custom-prompt" className="text-base focus:bg-white/10 focus:text-white">Use Custom Prompt</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
 
@@ -2424,6 +2627,33 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                       </Select>
                     )}
 
+                    {selectedAiAction === "custom-prompt" && (
+                      <Select
+                        value={selectedPromptId}
+                        onValueChange={setSelectedPromptId}
+                      >
+                        <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30">
+                          <SelectValue placeholder={isLoadingPrompts ? "Loading prompts..." : "Select a prompt"} />
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
+                            <path d="m6 9 6 6 6-6"/>
+                          </svg>
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-800 border-white/20 text-white">
+                          {customPrompts.length > 0 ? (
+                            customPrompts.map(prompt => (
+                              <SelectItem key={prompt.id} value={prompt.id} className="text-base focus:bg-white/10 focus:text-white">
+                                {prompt.title}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <div className="px-2 py-4 text-center text-white/60 text-sm">
+                              No custom prompts found. Create them in your account settings.
+                            </div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+
                     <Button
                       variant="default"
                       className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white h-12 text-base"
@@ -2432,7 +2662,9 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                     >
                       {aiProcessing ? "Processing..." : selectedAiAction === "transcribe" 
                         ? `Process ${transcriptProcessingType === 'keep-as-is' ? 'Transcript' : transcriptProcessingType === 'condense' ? 'Condensed Transcript' : 'Expanded Transcript'}`
-                        : `${selectedAiAction.charAt(0).toUpperCase() + selectedAiAction.slice(1)} Audio`}
+                        : selectedAiAction === "custom-prompt"
+                          ? "Process with Custom Prompt"
+                          : `${selectedAiAction.charAt(0).toUpperCase() + selectedAiAction.slice(1)} Audio`}
                     </Button>
                   </div>
                 </div>

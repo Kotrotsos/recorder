@@ -1,216 +1,297 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import LogoutButton from './logout-button'
-import { User } from '@supabase/supabase-js'
-import SupporterBadge from '@/components/SupporterBadge'
+import { toast } from '@/components/ui/use-toast'
 import { isLifetimeSupporter } from '@/utils/subscription'
 import { Eye, EyeOff } from 'lucide-react'
 
-export default function UserProfile() {
-  const [user, setUser] = useState<User | null>(null)
+interface UserProfileProps {
+  user: User;
+}
+
+export default function UserProfile({ user }: UserProfileProps) {
   const [loading, setLoading] = useState(true)
   const [email, setEmail] = useState('')
-  const [updating, setUpdating] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isSupporter, setIsSupporter] = useState(false)
+  const [fullName, setFullName] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const [isGoldmember, setIsGoldmember] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [password, setPassword] = useState('')
+  
   const supabase = createClient()
-
+  
   useEffect(() => {
-    const getUser = async () => {
+    const fetchProfile = async () => {
       setLoading(true)
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        setUser(user)
         if (user) {
+          // Set initial form values
           setEmail(user.email || '')
           
+          // Fetch profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single()
+          
+          if (profile) {
+            setFullName(profile.full_name || '')
+            setAvatarUrl(profile.avatar_url || '')
+          }
+          
           // Check if the user is a lifetime supporter
-          const supporter = await isLifetimeSupporter()
-          setIsSupporter(supporter)
+          const isSupporter = await isLifetimeSupporter()
+          setIsGoldmember(isSupporter)
         }
       } catch (error) {
-        console.error('Error getting user:', error)
+        console.error('Error loading user data:', error)
       } finally {
         setLoading(false)
       }
     }
-
-    getUser()
-  }, [supabase.auth])
-
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setUpdating(true)
-    setMessage(null)
-    setError(null)
-
+    
+    fetchProfile()
+  }, [user, supabase])
+  
+  // Add a function to handle logout
+  const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.updateUser({
-        email: email,
-      })
-
-      if (error) {
-        setError(error.message)
-        return
+      setLoading(true);
+      console.log('Attempting to log out...');
+      
+      // Use the current window's origin to ensure we don't have CORS issues
+      const baseUrl = window.location.origin;
+      const logoutUrl = `${baseUrl}/auth/signout`;
+      
+      console.log('Sending logout request to:', logoutUrl);
+      
+      const response = await fetch(logoutUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include cookies with the request
+      });
+      
+      console.log('Logout response status:', response.status);
+      
+      if (response.ok) {
+        console.log('Logout successful, clearing local state and redirecting...');
+        
+        // Force clear any local auth state
+        await supabase.auth.signOut();
+        
+        // Use window.location.replace for a complete page refresh
+        setTimeout(() => {
+          console.log('Redirecting to home page...');
+          window.location.replace('/');
+        }, 500);
+      } else {
+        console.error('Logout failed with status:', response.status);
+        throw new Error(`Logout failed with status: ${response.status}`);
       }
-
-      setMessage('Profile updated successfully. Check your email for confirmation.')
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast({
+        title: "Logout failed",
+        description: "There was an error logging out. Please try again.",
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
+  };
+  
+  const updateProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!user) return
+    
+    setLoading(true)
+    
+    try {
+      // Update profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          full_name: fullName,
+          avatar_url: avatarUrl,
+          updated_at: new Date().toISOString(),
+        })
+      
+      if (profileError) throw profileError
+      
+      // Update password if provided
+      if (password) {
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: password,
+        })
+        
+        if (passwordError) throw passwordError
+        
+        // Clear password field after update
+        setPassword('')
+        setShowPassword(false)
+      }
+      
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully",
+      })
     } catch (error) {
       console.error('Error updating profile:', error)
-      setError('An unexpected error occurred')
+      toast({
+        title: "Update failed",
+        description: "There was an error updating your profile. Please try again.",
+        variant: "destructive",
+      })
     } finally {
-      setUpdating(false)
+      setLoading(false)
     }
   }
-
-  const handlePasswordChange = () => {
-    // To be implemented
-    alert('Password change functionality would be implemented here')
+  
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      return
+    }
+    
+    setLoading(true)
+    
+    try {
+      const { error } = await supabase.rpc('delete_user')
+      
+      if (error) throw error
+      
+      await supabase.auth.signOut()
+      window.location.href = '/'
+    } catch (error) {
+      console.error('Error deleting account:', error)
+      toast({
+        title: "Deletion failed",
+        description: "There was an error deleting your account. Please try again.",
+        variant: "destructive",
+      })
+      setLoading(false)
+    }
   }
-
-  const handleDeleteAccount = () => {
-    // To be implemented
-    alert('Account deletion functionality would be implemented here')
-  }
-
-  if (loading) {
-    return <div className="flex justify-center items-center min-h-[400px] text-white">Loading...</div>
-  }
-
-  if (!user) {
-    return <div className="flex justify-center items-center min-h-[400px] text-white">Please log in to view your profile.</div>
-  }
-
+  
   return (
     <Card className="w-full backdrop-blur-sm bg-white/5 border-0 shadow-lg">
       <CardHeader className="space-y-1 p-6">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-2xl font-bold text-white">Your account</CardTitle>
-          {isSupporter && <SupporterBadge className="ml-2" />}
-        </div>
+        <CardTitle className="text-2xl font-bold text-white">Edit Profile</CardTitle>
         <CardDescription className="text-white/70">
-          Make changes to your personal information or account type
+          Update your personal information
         </CardDescription>
+        {isGoldmember && (
+          <div className="mt-2 inline-flex items-center bg-amber-500/20 text-amber-500 border border-amber-500/30 rounded-full px-3 py-1 text-sm">
+            You are awesome, Goldmember! ✨
+          </div>
+        )}
       </CardHeader>
-      <CardContent className="p-6 pt-0 space-y-8">
-        {/* Account Information Section */}
-        <div>
-          <h3 className="text-lg font-medium text-white mb-4">Your account</h3>
-          <div className="space-y-6">
-            {/* Email */}
-            <div className="space-y-1">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="email" className="text-sm text-white/70">Email • Private</Label>
-              </div>
-              <div className="relative">
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                  required
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/30 focus:ring-white/30 pl-3 pr-10 py-2 h-12 text-base"
-                />
-                <Button
-                  type="button"
-                  onClick={handleUpdateProfile}
-                  disabled={updating}
-                  className="absolute right-0 top-0 h-full px-4 text-white/70 hover:text-white bg-transparent hover:bg-white/10"
-                >
-                  Save
-                </Button>
-              </div>
-            </div>
-            
-            {/* Password */}
-            <div className="space-y-1">
-              <Label htmlFor="password" className="text-sm text-white/70">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value="••••••••"
-                  disabled
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/30 focus:ring-white/30 pl-3 pr-10 py-2 h-12 text-base"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-20 top-0 h-full px-3 text-white/70 hover:text-white bg-transparent"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-                <Button
-                  type="button"
-                  onClick={handlePasswordChange}
-                  className="absolute right-0 top-0 h-full px-4 text-white/70 hover:text-white bg-transparent hover:bg-white/10"
-                >
-                  Change
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Account Deletion Section */}
-        <div>
-          <h3 className="text-lg font-medium text-white mb-4">Account deletion</h3>
-          
-          {/* Delete Account */}
+      
+      <form onSubmit={updateProfile}>
+        <CardContent className="p-6 pt-0 space-y-6">
           <div className="space-y-2">
-            <div className="flex justify-between items-start">
-              <div>
-                <h4 className="text-white font-medium">Delete your data and account</h4>
-                <p className="text-sm text-white/70">
-                  Permanently delete your data and everything associated with your account
-                </p>
-              </div>
-              <Button 
-                type="button" 
-                onClick={handleDeleteAccount}
-                variant="destructive"
-                className="bg-red-900/50 hover:bg-red-900/70 text-white border-red-800/50"
-              >
-                Delete account
-              </Button>
-            </div>
-          </div>
-        </div>
-        
-        {isSupporter && (
-          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-            <h3 className="text-amber-400 font-medium mb-1">You are awesome, Goldmember!</h3>
-            <p className="text-sm text-white/80">
-              Thank you for supporting this project! You have lifetime access to all premium features.
+            <label className="text-sm font-medium text-white/70" htmlFor="email">Email</label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              disabled
+              className="bg-white/10 border-white/20 text-white/50 focus:border-white/30 focus:ring-white/30"
+            />
+            <p className="text-sm text-white/60">
+              Email cannot be changed
             </p>
           </div>
-        )}
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-white/70" htmlFor="fullname">Full Name</label>
+            <Input
+              id="fullname"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Your name"
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/30 focus:ring-white/30"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-white/70" htmlFor="password">Password</label>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter new password"
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/30 focus:ring-white/30"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-white/70 hover:text-white hover:bg-white/10"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-sm text-white/60">
+              Leave blank to keep current password
+            </p>
+          </div>
+          
+          <div className="pt-4 border-t border-white/10">
+            <h3 className="text-lg font-medium mb-4 text-white">Account logout</h3>
+            <p className="text-sm text-white/60 mb-4">
+              Log out of your account to end your current session.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleLogout}
+              disabled={loading}
+              className="text-white bg-white/10 border-white/20 hover:bg-white/20 hover:text-white"
+            >
+              {loading ? 'Logging out...' : 'Log Out'}
+            </Button>
+          </div>
+          
+          <div className="pt-4 border-t border-white/10">
+            <h3 className="text-lg font-medium mb-4 text-white">Account deletion</h3>
+            <p className="text-sm text-white/60 mb-4">
+              Once you delete your account, there is no going back. All your data will be permanently removed.
+            </p>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={loading}
+              className="hover:bg-red-700"
+            >
+              Delete Account
+            </Button>
+          </div>
+        </CardContent>
         
-        {error && (
-          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-sm font-medium text-red-300">
-            {error}
-          </div>
-        )}
-        {message && (
-          <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-md text-sm font-medium text-green-300">
-            {message}
-          </div>
-        )}
-      </CardContent>
-      <CardFooter className="flex justify-between border-t border-white/10 pt-4 p-6">
-        <div className="text-sm text-white/60">
-          User ID: {user.id.substring(0, 8)}...
-        </div>
-        <LogoutButton variant="outline" className="bg-white/10 hover:bg-white/20 text-white border-white/20" />
-      </CardFooter>
+        <CardFooter className="p-6 pt-0 flex justify-end">
+          <Button
+            type="submit"
+            disabled={loading}
+            className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white"
+          >
+            {loading ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </CardFooter>
+      </form>
     </Card>
   )
 } 

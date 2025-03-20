@@ -1,25 +1,42 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { User } from '@supabase/supabase-js'
 import UserProfile from '@/components/auth/user-profile'
 import ProtectedRoute from '@/components/auth/protected-route'
 import AuthLayout from '@/components/auth/auth-layout'
 import WebhookSettings from '@/components/auth/webhook-settings'
 import UISettings from '@/components/auth/ui-settings'
+import CustomPrompts from '@/components/auth/custom-prompts'
+import { createClient } from '@/lib/supabase'
 
 export default function AccountPage() {
   const [activeSection, setActiveSection] = useState<string>('profile')
+  const [user, setUser] = useState<User | null>(null)
+  
+  // Get user data
+  useEffect(() => {
+    const fetchUser = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+    }
+    
+    fetchUser()
+  }, [])
   
   const renderSection = () => {
     switch (activeSection) {
       case 'profile':
-        return <UserProfile />
+        return user ? <UserProfile user={user} /> : null
       case 'webhooks':
-        return <WebhookSettings />
+        return user ? <WebhookSettings user={user} /> : null
       case 'ui':
         return <UISettings />
+      case 'prompts':
+        return user ? <CustomPrompts user={user} /> : null
       default:
-        return <UserProfile />
+        return user ? <UserProfile user={user} /> : null
     }
   }
   
@@ -53,6 +70,16 @@ export default function AccountPage() {
                   }`}
                 >
                   Webhooks
+                </button>
+                <button
+                  onClick={() => setActiveSection('prompts')}
+                  className={`text-left px-4 py-3 rounded-md flex items-center transition-colors ${
+                    activeSection === 'prompts' 
+                      ? 'bg-white/15 text-white font-medium' 
+                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  Custom Prompts
                 </button>
                 <button
                   onClick={() => setActiveSection('ui')}

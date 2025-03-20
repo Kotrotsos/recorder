@@ -575,4 +575,127 @@ export async function deleteTranslation(userId: string, translationId: string) {
   }
   
   return true;
-} 
+}
+
+// Custom Prompts functions
+export async function getCustomPrompts(userId: string) {
+  if (!userId) return []
+  
+  try {
+    const supabase = createClient()
+    
+    const { data, error } = await supabase
+      .from('custom_prompts')
+      .select('id, title, prompt_text, created_at, updated_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Error fetching custom prompts:', error)
+      return []
+    }
+    
+    return data || []
+  } catch (error) {
+    console.error('Error in getCustomPrompts:', error)
+    return []
+  }
+}
+
+export const getCustomPrompt = async (promptId: string) => {
+  const supabase = createClient();
+  
+  try {
+    const { data, error } = await supabase
+      .from('custom_prompts')
+      .select('*')
+      .eq('id', promptId)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching custom prompt:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in getCustomPrompt:', error);
+    return null;
+  }
+};
+
+export const createCustomPrompt = async (userId: string, title: string, promptText: string) => {
+  const supabase = createClient();
+  
+  try {
+    const { data, error } = await supabase
+      .from('custom_prompts')
+      .insert([
+        {
+          user_id: userId,
+          title,
+          prompt_text: promptText
+        }
+      ])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating custom prompt:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in createCustomPrompt:', error);
+    return null;
+  }
+};
+
+export const updateCustomPrompt = async (promptId: string, title: string, promptText: string) => {
+  const supabase = createClient();
+  
+  try {
+    const { data, error } = await supabase
+      .from('custom_prompts')
+      .update({
+        title,
+        prompt_text: promptText,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', promptId)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error updating custom prompt:', error);
+      return null;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error in updateCustomPrompt:', error);
+    return null;
+  }
+};
+
+export const deleteCustomPrompt = async (promptId: string) => {
+  const supabase = createClient();
+  
+  try {
+    const { error } = await supabase
+      .from('custom_prompts')
+      .delete()
+      .eq('id', promptId);
+    
+    if (error) {
+      console.error('Error deleting custom prompt:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteCustomPrompt:', error);
+    return false;
+  }
+}; 

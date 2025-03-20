@@ -225,6 +225,32 @@ export interface Database {
           updated_at?: string
         }
       }
+      custom_prompts: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          prompt_text: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          prompt_text: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          prompt_text?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { User } from '@supabase/supabase-js'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -10,6 +11,7 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -20,6 +22,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       if (!session) {
         router.push('/login')
       } else {
+        setUser(session.user)
         setIsLoading(false)
       }
     }
