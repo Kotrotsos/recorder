@@ -3165,3 +3165,113 @@ The implementation follows responsive design best practices:
    - Flexible layout models (flex containers with space-between)
    - Dynamic sizing (smaller components on mobile)
    - Collapsible content areas to conserve space
+
+## Mobile-Optimized List View
+
+### March 20, 2025
+
+The list view in the audio recorder component has been optimized for mobile devices by hiding non-essential columns and focusing on the most important information.
+
+### Implementation Details
+
+1. **Responsive Table Design**:
+   - Used Tailwind's responsive utility classes to show/hide table cells based on screen size
+   - Added `hidden md:table-cell` to columns that should only appear on medium screens and larger
+   - Kept the Title and Actions columns visible on all screen sizes
+   - Applied responsive classes to both the `<th>` and `<td>` elements for consistent appearance
+
+   ```jsx
+   <th className="py-3 px-6 text-left font-medium hidden md:table-cell">Type</th>
+   <td className="py-3 px-6 hidden md:table-cell">
+     {result.type === "summarize" ? "Summary" : 
+      result.type === "analyze" ? "Analysis" : 
+      "Transcript"}
+   </td>
+   ```
+
+2. **Mobile-First Approach**:
+   - Started with a minimal view showing only essential information (title and actions)
+   - Added additional columns for larger screens using the `md:` breakpoint
+   - Ensured the table remains usable on smaller screens without horizontal scrolling
+   - Maintained consistent spacing between visible elements
+
+### User Experience Benefits
+
+1. **Improved Readability on Small Screens**:
+   - Removes less important information (type and date) on mobile to reduce clutter
+   - Focuses on the most important data: what the item is (title) and what can be done with it (actions)
+   - Maintains full functionality while optimizing the display for smaller screens
+   
+2. **Consistent Information Hierarchy**:
+   - Title remains the primary identifier for each item across all screen sizes
+   - Action buttons remain accessible regardless of screen size
+   - Additional context (type and date) is available on larger screens where space permits
+
+3. **Seamless Responsive Behavior**:
+   - Table automatically adapts as the screen size changes
+   - No layout shifts or content reflow when columns appear/disappear
+   - Consistent styling between mobile and desktop views
+
+This responsive approach provides an optimal viewing experience across a wide range of devices while maintaining all functionality.
+
+## CSS Style Property Best Practices
+
+### March 20, 2025
+
+When applying CSS styles in React, it's important to avoid mixing shorthand and non-shorthand properties for the same value to prevent styling bugs during rerendering.
+
+### The Issue
+
+React applies style updates in an optimized way, updating only the properties that have changed. When shorthand properties (like `background`) are mixed with their non-shorthand counterparts (like `backgroundSize`), conflicts can occur during rerendering because:
+
+1. The shorthand property can implicitly override values set by non-shorthand properties
+2. During rerender, React may update one property but not the other, leading to inconsistent styles
+3. The browser may interpret the combination of properties differently than expected
+
+### Solution Implementation
+
+In the `LoadingOverlay` component, we fixed this issue by:
+
+1. **Separating shorthand properties**: We replaced the shorthand `background` property with individual properties:
+   
+   ```jsx
+   // Before (problematic):
+   return {
+     background: `linear-gradient(to bottom right, ${from}, ${via}, ${to})`,
+     backgroundSize: '200% 200%',
+     animation: 'gradientShift 15s ease infinite'
+   };
+   
+   // After (fixed):
+   return {
+     backgroundImage: `linear-gradient(to bottom right, ${from}, ${via}, ${to})`,
+     backgroundSize: '200% 200%',
+     animation: 'gradientShift 15s ease infinite'
+   };
+   ```
+
+2. **Explicitly setting all properties**: For the flat color mode, we explicitly set `backgroundImage: none` to ensure all properties have defined values:
+   
+   ```jsx
+   // Before:
+   return {
+     background: String(uiSettings.flat_color || '')
+   };
+   
+   // After:
+   return {
+     backgroundColor: String(uiSettings.flat_color || ''),
+     backgroundImage: 'none'
+   };
+   ```
+
+### Best Practices
+
+To avoid similar issues in the future:
+
+1. **Use individual properties** instead of shorthand when any sub-property might be updated separately
+2. **Be explicit** about all relevant properties even when using a simple color
+3. **Group related styles** together to make it clear which properties might affect each other
+4. **Consider component rerender patterns** when designing style update logic
+
+This approach reduces the chance of styling bugs during component rerenders and provides more predictable styling behavior across different browsers.

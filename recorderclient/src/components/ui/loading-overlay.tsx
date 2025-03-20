@@ -33,13 +33,14 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
       const to = String(uiSettings.gradient_to || '');
       
       return {
-        background: `linear-gradient(to bottom right, ${from}, ${via}, ${to})`,
+        backgroundImage: `linear-gradient(to bottom right, ${from}, ${via}, ${to})`,
         backgroundSize: '200% 200%',
         animation: 'gradientShift 15s ease infinite'
       };
     } else {
       return {
-        background: String(uiSettings.flat_color || '')
+        backgroundColor: String(uiSettings.flat_color || ''),
+        backgroundImage: 'none'
       };
     }
   };

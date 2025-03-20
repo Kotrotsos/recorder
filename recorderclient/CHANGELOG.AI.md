@@ -1557,3 +1557,26 @@ This change ensures that background styles from the UI settings context are not 
 
 ### Files Changed
 - Modified `src/components/audio/audio-recorder.tsx`
+
+## March 20, 2025 - 16:40 CET
+
+### Improved
+- Improved list view for mobile devices by hiding type and date columns
+- Simplified the list view to show only title and actions on small screens
+- Added responsive utility classes to show/hide table cells based on screen size
+- Enhanced mobile user experience by reducing clutter in the list view
+
+### Files Changed
+- Modified `src/components/audio/audio-recorder.tsx`
+
+## March 20, 2025 - 16:58 CET
+
+### Fixed
+- Fixed style property conflict in the loading overlay component
+- Separated the shorthand `background` property into individual properties (`backgroundImage` and `backgroundColor`)
+- Resolved console error: "Updating a style property during rerender (background) when a conflicting property is set (backgroundSize) can lead to styling bugs"
+- Improved CSS style handling to avoid mixing shorthand and non-shorthand properties
+- Enhanced flat color mode to explicitly set `backgroundImage: none`
+
+### Files Changed
+- Modified `src/components/ui/loading-overlay.tsx`

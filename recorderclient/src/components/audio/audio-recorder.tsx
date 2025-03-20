@@ -2139,8 +2139,8 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                   <thead>
                     <tr className="border-b border-white/20 bg-white/5">
                       <th className="py-3 px-6 text-left font-medium">Title</th>
-                      <th className="py-3 px-6 text-left font-medium">Type</th>
-                      <th className="py-3 px-6 text-left font-medium">
+                      <th className="py-3 px-6 text-left font-medium hidden md:table-cell">Type</th>
+                      <th className="py-3 px-6 text-left font-medium hidden md:table-cell">
                         <div className="flex items-center">
                           <span>Date</span>
                           <button 
@@ -2172,12 +2172,12 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                               "Processed Transcript"
                             ))}
                         </td>
-                        <td className="py-3 px-6">
+                        <td className="py-3 px-6 hidden md:table-cell">
                           {result.type === "summarize" ? "Summary" : 
                            result.type === "analyze" ? "Analysis" : 
                            "Transcript"}
                         </td>
-                        <td className="py-3 px-6">
+                        <td className="py-3 px-6 hidden md:table-cell">
                           {new Date(result.date || Date.now()).toLocaleDateString('en-US', { 
                             year: 'numeric',
                             month: 'short', 
