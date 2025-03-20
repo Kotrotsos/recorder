@@ -2548,3 +2548,120 @@ This loading system provides several benefits:
 - Prevents user interaction while data is loading
 - Provides clear visual feedback during asynchronous operations
 - Enhances perceived performance by communicating system state to users
+
+## Transcript Processing System
+
+The transcript processing system provides three different ways to process transcripts:
+
+1. **Keep As Is**: Makes minimal changes to the transcript, focusing on correcting spelling, grammar, and punctuation while preserving the original content.
+2. **Condense**: Removes filler words, repetitions, and tangential content to create a more concise version that maintains all key information.
+3. **Expand**: Adds relevant background information and context, clearly marking AI additions to distinguish them from the original transcript.
+
+### Implementation Details
+
+The system consists of three main components:
+
+1. **Prompt Files**: Located in `src/lib/ai/prompts/`, these files contain specialized prompts for each processing type:
+   - `keep-as-is.ts`: Instructions for minimal editing
+   - `condense.ts`: Instructions for removing non-essential content
+   - `expand.ts`: Instructions for adding context and clarifications
+
+2. **API Endpoint**: The `src/app/api/ai/process-transcript/route.ts` endpoint handles transcript processing requests by:
+   - Receiving the transcript text and the desired processing type
+   - Selecting the appropriate prompt based on the processing type
+   - Sending the transcript and prompt to OpenAI for processing
+   - Returning the processed transcript
+
+3. **UI Integration**: The audio recorder component (`src/components/audio/audio-recorder.tsx`) integrates the processing options by:
+   - Adding a "Process Transcript" option to the main AI actions dropdown
+   - Displaying a secondary dropdown with the three processing types when "Process Transcript" is selected
+   - Sending the transcript to the process-transcript API with the selected processing type
+   - Saving the processed transcript with metadata indicating the processing type used
+
+### Usage Flow
+
+1. User records or uploads audio which is transcribed
+2. User selects "Process Transcript" from the AI actions dropdown
+3. User selects a processing type (Keep As Is, Condense, or Expand)
+4. The system sends the transcript to OpenAI with the appropriate prompt
+5. The processed transcript is displayed and can be saved to the database
+
+The processing is handled asynchronously, with a loading state displayed during processing, and error handling to fall back to the original transcript if processing fails.
+
+## Transcript Processing and Card Display System
+
+The application provides various AI actions for processing audio content:
+
+1. **Summarize** - Creates a summary of the transcribed audio
+2. **Analyze** - Analyzes the content of the transcribed audio
+3. **Transcribe** - Processes the transcript in one of three ways:
+   - Keep As-Is - Uses the original transcript without changes
+   - Condense - Creates a more concise version of the transcript
+   - Expand - Elaborates on the transcript content
+
+### How Card Creation Works
+
+All three AI actions (summarize, analyze, transcribe) create result cards that are displayed in either card view or list view. The process follows these steps:
+
+1. When a user selects an AI action and clicks "Process with AI":
+   - A new result card is immediately created with a "generating" state
+   - The card shows an appropriate loading message based on the action type
+   - The card is added to the `processedResults` state array
+
+2. The application then processes the content:
+   - For summarize/analyze: An API call is made to generate content
+   - For transcribe: The transcript is processed according to the selected type
+
+3. Once processing completes:
+   - The card is updated with the final content
+   - The `generating` state is set to false
+   - For authenticated users, results are saved to the database
+
+4. Special handling for "transcribe" type:
+   - A placeholder file is created and uploaded to satisfy database foreign key constraints
+   - The processed transcript is stored with a reference to this placeholder file
+
+### UI Rendering Logic
+
+The result cards are rendered using a consistent pattern for all three processing types:
+
+```tsx
+// Card title logic
+{result.generating ? 
+  (result.type === "summarize" ? "Generating Summary..." : 
+   result.type === "analyze" ? "Generating Analysis..." : 
+   "Processing Transcript...") : 
+  (result.title || (
+    result.type === "summarize" ? "Summary" : 
+    result.type === "analyze" ? "Analysis" : 
+    "Processed Transcript"
+  ))}
+```
+
+This ensures that all three types of processing results (summary, analysis, and processed transcript) are displayed consistently in the UI as cards, with appropriate titles and loading states.
+
+### Card Display System
+
+Each card is displayed based on the `viewMode` selected (card or list):
+
+1. **Card View**: Displays results in a grid of cards with fixed height
+   - All results (summaries, analyses, and processed transcripts) appear equally in this view
+   - Cards include a title, content snippet, and action buttons
+   - Users can click a card to expand it in a modal dialog
+
+2. **List View**: Displays results in a more compact format
+   - Shows a table with columns for Type, Title, and Date
+   - All processing types (including transcripts) are properly displayed
+
+Both views use the `getSortedResults` function which sorts all results by date without filtering by type, ensuring all processing results appear in the UI.
+
+### Foreign Key Constraint Handling
+
+For transcript processing, the application needs to satisfy the database foreign key constraint between the `transcriptions` table and `files` table. This is handled by:
+
+1. Creating a small placeholder text file
+2. Uploading it to obtain a valid `file_id`
+3. Using this ID when creating the transcription record
+4. Marking the record with `isPlaceholder: true` for future reference
+
+This approach ensures database integrity while allowing for transcript-only operations.

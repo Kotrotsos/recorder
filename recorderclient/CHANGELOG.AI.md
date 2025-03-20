@@ -2,6 +2,42 @@
 
 This file documents all the changes made by AI assistance.
 
+## May 17, 2024 - 20:30 CET
+
+### Fixed
+- Fixed critical issue where processed transcript cards were not being displayed in the UI
+- Removed filter in the getSortedResults function that was excluding results with type "transcribe"
+- Ensured processed transcripts now appear as cards on the canvas alongside summaries and analyses
+- Maintained consistent card display for all AI processing results (summaries, analyses, and transcripts)
+
+### Files Changed
+- Modified `src/components/audio/audio-recorder.tsx`
+
+## March 20, 2025 - 00:52 CET
+
+### Added
+- Added three new transcription processing options: Keep As Is, Condense, and Expand
+- Created new prompt files for each transcription processing type in `src/lib/ai/prompts/`
+- Implemented a new API endpoint for processing transcripts at `src/app/api/ai/process-transcript/`
+- Added a client-side function to process transcripts with different prompt types
+- Enhanced the audio recorder UI to allow users to select transcription processing options
+- Updated the audio processing workflow to apply the selected processing type to transcripts
+
+### Changed
+- Updated the prompts index file to export the new prompts
+- Modified the UI to show a second dropdown when "Process Transcript" is selected
+- Improved button text to reflect the selected processing type
+- Enhanced transcription metadata to include the processing type used
+
+### Files Changed
+- Added `src/lib/ai/prompts/keep-as-is.ts`
+- Added `src/lib/ai/prompts/condense.ts`
+- Added `src/lib/ai/prompts/expand.ts`
+- Modified `src/lib/ai/prompts/index.ts`
+- Added `src/app/api/ai/process-transcript/route.ts`
+- Modified `src/lib/api-client.ts`
+- Modified `src/components/audio/audio-recorder.tsx`
+
 ## March 21, 2024 - 16:00 CET
 
 ### Fixed
@@ -1051,68 +1087,13 @@ The issue was caused by mixing Tailwind classes and inline styles that were bein
 - `src/contexts/loading-context.tsx` - Created loading context provider
 - `src/components/ui/loading-overlay.tsx` - Created loading overlay component
 
-## 2025-03-14 22:01:28 - Added Loading Indicator and Page Transition System
+## 2023-10-11 23:30 (UTC)
 
-### Changes
-- Added a new LoadingProvider context to manage loading states across the application
-- Created a LoadingSpinner component for visual feedback during loading
-- Created a LoadingOverlay component that wraps content and displays a loading indicator
-- Updated the UISettingsProvider to better handle style application during page transitions
-- Modified the root layout to incorporate the loading system into the application
+### Fixed transcript processing card display
 
-### Files Changed
-- Created `src/contexts/loading-context.tsx`
-- Created `src/components/ui/loading-spinner.tsx`
-- Created `src/components/ui/loading-overlay.tsx`
-- Modified `src/app/layout.tsx`
-- Modified `src/contexts/ui-settings-context.tsx`
+- Updated the UI to properly display processed transcript cards in both card view and list view
+- Fixed inconsistencies in the card header display for transcribe type results
+- Ensured that processed transcripts appear as cards in the UI, similar to summary and analysis cards
+- Updated the expanded card dialog to properly handle transcribe type results
 
-### Reason for Changes
-This change addresses an issue where styling wasn't being properly applied when navigating between pages. The new loading system ensures that components are only rendered after all styles have been properly loaded and applied. The loading indicator provides visual feedback to users during this process, improving the overall user experience.
-
-The system works by creating a loading context that tracks the loading state, and a loading overlay component that only renders the page content once everything is ready. The UI settings context has been enhanced to better handle style application during page transitions.
-
-## 2025-03-14 22:05:34 - Enhanced Loading System and User Experience
-
-### Fixed
-- Fixed issue where the loading spinner would sometimes keep spinning indefinitely
-- Added a safety timeout (5 seconds) to prevent infinite loading states
-- Improved error handling in the loading context to ensure loading always completes
-- Enhanced route change detection to better handle navigation events
-
-### Enhanced
-- Updated the loading overlay with a beautiful dark neutral gradient background
-- Changed background from plain color to gradient (dark blue to deep navy)
-- Improved visibility of the loading spinner against the new background
-- Added blur effect to the loading overlay for a more modern look
-- Updated text color for better readability on the gradient background
-
-### Files Changed
-- Modified `src/contexts/loading-context.tsx`
-- Modified `src/components/ui/loading-overlay.tsx`
-- Modified `src/components/ui/loading-spinner.tsx`
-
-### Reason for Changes
-These changes address a usability issue where the loading spinner would sometimes get stuck in an infinite state, preventing users from accessing content. The safety timeout ensures users will always see content even if there's an issue with the loading process. Additionally, the visual enhancements to the loading overlay provide a more polished and professional appearance during loading states, improving the overall user experience.
-
-## 2025-03-14 22:13:24 - Fixed Loading Overlay Hydration Error
-
-### Fixed
-- Fixed a critical React hydration error in the LoadingOverlay component
-- Replaced mixed Tailwind classes and inline styles with consistent style objects
-- Added client-side detection to conditionally apply backdrop blur effects
-- Used React CSSProperties typing for proper TypeScript compliance
-- Implemented a solution that ensures consistent rendering between server and client
-- Removed all styling differences that were causing the hydration mismatch
-
-### Files Changed
-- Modified `src/components/ui/loading-overlay.tsx`
-
-### Reason for Changes
-This fix addresses a React hydration error that was occurring because the server and client were rendering different HTML for the loading overlay. The error appeared as:
-
-```
-Hydration failed because the server rendered HTML didn't match the client.
-```
-
-The issue was caused by mixing Tailwind classes and inline styles that were being processed differently between server and client rendering. By moving all styling to inline style objects with proper typing and adding client-side detection for browser-specific features like blur effects, we ensure that the HTML generated on both server and client is consistent, eliminating the hydration error.
+The issue was that the UI components weren't properly handling the "transcribe" result type, causing processed transcripts not to appear properly in the card display. This has been fixed by updating all relevant display components to recognize and handle the "transcribe" type alongside the existing "summarize" and "analyze" types.

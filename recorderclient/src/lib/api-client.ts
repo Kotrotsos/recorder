@@ -357,4 +357,79 @@ export async function translateText(text: string, language: string): Promise<AIP
       error: error instanceof Error ? error.message : String(error)
     };
   }
+}
+
+/**
+ * Process transcript with different processing types
+ * @param text The transcript text to process
+ * @param processingType The type of processing to apply (keep-as-is, condense, expand)
+ * @returns The processed transcript
+ */
+export async function processTranscript(text: string, processingType: 'keep-as-is' | 'condense' | 'expand'): Promise<AIProcessingResult> {
+  try {
+    console.log("API Client: Preparing to process transcript of length:", text.length, "with type:", processingType);
+
+    // Call our API endpoint with longer timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    
+    try {
+      const response = await fetch('/api/ai/process-transcript', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        body: JSON.stringify({ text, processingType }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      console.log("API Client: Response received", {
+        status: response.status,
+        ok: response.ok
+      });
+      
+      const result = await response.json();
+      console.log("API Client: Parsed response", result);
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: result.error || `Server returned ${response.status}`
+        };
+      }
+
+      return {
+        success: true,
+        result: result.result,
+        // No need to extract title/content since this just returns processed text
+        content: result.result
+      };
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        console.error("API Client: Request timed out");
+        return {
+          success: false,
+          error: 'Transcript processing request timed out. The text might be too long or the server is busy.'
+        };
+      }
+      
+      console.error("API Client: Fetch error", fetchError);
+      return {
+        success: false,
+        error: fetchError instanceof Error ? fetchError.message : String(fetchError)
+      };
+    }
+  } catch (error) {
+    console.error("API Client: Unexpected error", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
 } 
