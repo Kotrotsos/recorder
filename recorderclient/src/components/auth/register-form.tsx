@@ -21,7 +21,7 @@ export default function RegisterForm() {
   const [message, setMessage] = useState<string | null>(null)
   
   const searchParams = useSearchParams()
-  const redirectPath = searchParams.get('redirect') || '/'
+  const redirectPath = searchParams?.get('redirect') || '/'
   const supabase = createClient()
 
   const handleRegister = async (e: React.FormEvent) => {

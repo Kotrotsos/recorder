@@ -16,7 +16,7 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectPath = searchParams.get('redirect') || '/'
+  const redirectPath = searchParams?.get('redirect') || '/'
   const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {

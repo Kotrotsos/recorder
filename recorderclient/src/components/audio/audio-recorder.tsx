@@ -1263,13 +1263,13 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               }));
             }
           } else {
-            console.error("Custom prompt processing failed:", result.error);
+            console.error("Custom prompt processing failed");
             // Handle error
             setProcessedResults(prev => prev.map(item => 
               item.id === newId 
                 ? { 
                     ...item, 
-                    content: `Error: ${result.error || "Failed to process with custom prompt"}`, 
+                    content: "Error: Failed to process with custom prompt", 
                     title: "Error", 
                     generating: false 
                   } 

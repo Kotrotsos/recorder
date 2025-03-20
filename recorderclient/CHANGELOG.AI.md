@@ -2,6 +2,19 @@
 
 This file documents all the changes made by AI assistance.
 
+## March 20, 2025 - 13:31 CET
+
+### Fixed
+- Fixed type error in `audio-recorder.tsx` where the code was trying to access a non-existent `error` property
+- Improved error handling in the custom prompt processing to use a generic error message instead of trying to access an undefined property
+- Fixed type error in `login-form.tsx` where `searchParams` was used without checking if it's null
+- Fixed type error in `register-form.tsx` where `searchParams` was used without checking if it's null
+
+### Files Changed
+- Modified `src/components/audio/audio-recorder.tsx` - Updated error handling in the custom prompt processing logic
+- Modified `src/components/auth/login-form.tsx` - Added null check for searchParams before calling get()
+- Modified `src/components/auth/register-form.tsx` - Added null check for searchParams before calling get()
+
 ## March 20, 2025 - 13:22 CET
 
 ### Updated
