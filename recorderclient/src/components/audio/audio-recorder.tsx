@@ -2019,7 +2019,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   return (
     <>
       {processedResults.length > 0 && (
-        <div className="mx-auto px-2 z-[60] overflow-y-auto custom-scrollbar" style={{ maxHeight: 'calc(100vh - 100px)' }}>
+        <div className="mx-auto px-4 z-[60] overflow-y-auto custom-scrollbar" style={{ maxHeight: 'calc(100vh - 100px)' }}>
           <div className="flex justify-center mb-4 space-x-2">
             <Button
               variant="ghost"

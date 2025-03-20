@@ -223,13 +223,35 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
         lastAppliedTimeRef.current = now
         
         const gradientElements = document.querySelectorAll('.gradient-background')
-        // Fix the string handling for TypeScript using proper pathname check
-        const pathString = pathname || '';
-        const isAccountPage = typeof pathString === 'string' && pathString.indexOf('/account') >= 0;
+        // Apply styles to all containers that might need the background styling
+        const containerSelectors = [
+          '.gradient-background',
+          '.min-h-screen.flex.flex-col.relative.overflow-hidden',
+          '.min-h-screen.flex.flex-col',
+          '.min-h-screen'
+          // 'main' - removing main from selectors
+        ]
+        
+        // Get all potential containers
+        const allContainers = Array.from(
+          containerSelectors.flatMap(selector => 
+            Array.from(document.querySelectorAll(selector))
+          )
+        )
+        
+        // Remove duplicates by creating a Set
+        const uniqueContainers = [...new Set(allContainers)]
+
+        // Explicitly remove any main elements that might have been selected
+        const containersWithoutMain = uniqueContainers.filter(el => 
+          (el as HTMLElement).tagName.toLowerCase() !== 'main'
+        );
 
         if (uiSettings.ui_mode === 'fun') {
           // Apply gradient background
           gradientElements.forEach((el) => {
+            if ((el as HTMLElement).tagName.toLowerCase() === 'main') return; // Skip main elements
+            
             const element = el as HTMLElement
             // Ensure gradient values are treated as strings
             const from = String(uiSettings.gradient_from || '');
@@ -242,25 +264,37 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
             element.style.animation = 'gradientShift 15s ease infinite';
           })
 
-          // Special handling for account page
-          if (isAccountPage) {
-            const accountContainer = document.querySelector('.min-h-screen.flex.flex-col.relative.overflow-hidden')
-            if (accountContainer) {
-              const containerElement = accountContainer as HTMLElement;
-              // Ensure gradient values are treated as strings
-              const from = String(uiSettings.gradient_from || '');
-              const via = String(uiSettings.gradient_via || '');
-              const to = String(uiSettings.gradient_to || '');
-              
+          // Apply to all containers
+          containersWithoutMain.forEach(container => {
+            if ((container as HTMLElement).tagName.toLowerCase() === 'main') return; // Double-check to skip main elements
+            
+            const element = container as HTMLElement;
+            const from = String(uiSettings.gradient_from || '');
+            const via = String(uiSettings.gradient_via || '');
+            const to = String(uiSettings.gradient_to || '');
+            
+            // Only apply if the element doesn't already have a background image
+            const currentBackground = element.style.background;
+            if (!currentBackground || !currentBackground.includes('url(')) {
               const gradientStyle = `linear-gradient(to bottom right, ${from}, ${via}, ${to})`;
-              containerElement.style.background = gradientStyle;
-              containerElement.style.backgroundSize = '200% 200%';
-              containerElement.style.animation = 'gradientShift 15s ease infinite';
+              element.style.background = gradientStyle;
+              element.style.backgroundSize = '200% 200%';
+              element.style.animation = 'gradientShift 15s ease infinite';
             }
-          }
+          });
+          
+          // Explicitly clear backgrounds on all main elements
+          document.querySelectorAll('main').forEach(mainEl => {
+            const element = mainEl as HTMLElement;
+            element.style.background = 'transparent';
+            element.style.backgroundSize = 'auto';
+            element.style.animation = 'none';
+          });
         } else {
           // Apply flat background
           gradientElements.forEach((el) => {
+            if ((el as HTMLElement).tagName.toLowerCase() === 'main') return; // Skip main elements
+            
             const element = el as HTMLElement
             element.style.background = String(uiSettings.flat_color || '');
             
@@ -269,23 +303,41 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
             element.style.animation = 'none'
           })
 
-          // Special handling for account page
-          if (isAccountPage) {
-            // Find the account page container
-            const accountContainer = document.querySelector('.min-h-screen.flex.flex-col.relative.overflow-hidden')
-            if (accountContainer) {
-              const containerElement = accountContainer as HTMLElement;
-              containerElement.style.background = String(uiSettings.flat_color || '');
-              // Clear animation for flat mode
-              containerElement.style.backgroundSize = 'auto';
-              containerElement.style.animation = 'none';
+          // Apply to all containers
+          containersWithoutMain.forEach(container => {
+            if ((container as HTMLElement).tagName.toLowerCase() === 'main') return; // Double-check to skip main elements
+            
+            const element = container as HTMLElement;
+            // Only apply if the element doesn't already have a background image
+            const currentBackground = element.style.background;
+            if (!currentBackground || !currentBackground.includes('url(')) {
+              element.style.background = String(uiSettings.flat_color || '');
+              element.style.backgroundSize = 'auto';
+              element.style.animation = 'none';
             }
-          }
+          });
+          
+          // Explicitly clear backgrounds on all main elements
+          document.querySelectorAll('main').forEach(mainEl => {
+            const element = mainEl as HTMLElement;
+            element.style.background = 'transparent';
+            element.style.backgroundSize = 'auto';
+            element.style.animation = 'none';
+          });
         }
         
         // Apply foreground color to text elements
-        document.querySelectorAll('.text-white, .text-white\\70, .text-white\\60').forEach((el) => {
-          (el as HTMLElement).style.color = String(uiSettings.foreground_color || '');
+        document.querySelectorAll('.text-white, .text-white\\70, .text-white\\60, h1, h2, h3, h4, h5, h6, p, span, label, a').forEach((el) => {
+          // Check if the element has a text color class that should be affected
+          const classList = (el as HTMLElement).classList;
+          const shouldApplyColor = Array.from(classList).some(cls => 
+            cls.includes('text-white') || 
+            !cls.includes('text-') // Apply to elements with no specific text color class
+          );
+          
+          if (shouldApplyColor) {
+            (el as HTMLElement).style.color = String(uiSettings.foreground_color || '');
+          }
         })
         
         // Force a reflow to ensure styles are applied
@@ -314,9 +366,12 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [loading, uiSettings]) // Use the actual uiSettings object, but control application with the ref
 
-  // Apply settings when the pathname changes, focusing on the account page
+  // Apply settings when the pathname changes, for all pages
   useEffect(() => {
     if (pathname && !loading) {
+      // Apply immediately and then again after a short delay for dynamic content
+      applyUISettings()
+      
       const timeoutId = setTimeout(() => {
         applyUISettings()
       }, 100)
@@ -325,12 +380,10 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [pathname, loading])
 
-  // Periodically check and reapply styles on the account page
+  // Periodically reapply styles on all pages
   // This helps catch any cases where styles weren't properly applied
   useEffect(() => {
-    // Only run this on the account page and when not loading
-    const isAccountPage = pathname && typeof pathname === 'string' && pathname.indexOf('/account') >= 0
-    if (!isAccountPage || loading) return
+    if (loading) return
 
     // Set up a check every 500ms for the first 3 seconds
     const intervalId = setInterval(() => {
@@ -349,7 +402,7 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
       clearInterval(intervalId)
       clearTimeout(timeoutId)
     }
-  }, [pathname, loading])
+  }, [loading, pathname])
 
   return (
     <UISettingsContext.Provider value={{ 

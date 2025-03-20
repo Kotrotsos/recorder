@@ -130,12 +130,26 @@ export default function AboutPageClient() {
             <h2 className="text-xl font-semibold text-white mt-6 mb-3">Key Features</h2>
             
             <ul className="list-disc pl-5 space-y-2">
-              <li>High-quality audio recording with noise reduction</li>
-              <li>Accurate speech-to-text transcription powered by advanced AI</li>
-              <li>Intelligent summarization and key point extraction</li>
-              <li>Secure cloud storage with easy sharing options</li>
-              <li>Cross-platform accessibility</li>
+              <li>AI-Powered Transcription with industry-leading accuracy, multi-speaker detection, and time-stamped references</li>
+              <li>Smart Content Analysis that automatically summarizes content and extracts valuable insights using custom analysis workflows</li>
+              <li>Secure & Accessible with end-to-end encryption, cloud storage across all devices, and flexible sharing options</li>
+              <li>Personalized Experience featuring an intuitive interface with customizable themes and organization tools</li>
+              <li>High-quality audio recording with advanced noise reduction technology</li>
             </ul>
+            
+            <h2 className="text-xl font-semibold text-white mt-6 mb-3">Value-Based Pricing</h2>
+            
+            <p>
+              For a limited time only, we offer a Free Tier with essential capabilities, and a Lifetime Supporter option—a one-time payment for unlimited 
+              access to all features without recurring subscription fees.
+            </p>
+            
+            <h2 className="text-xl font-semibold text-white mt-6 mb-3">Perfect For</h2>
+            
+            <p>
+              rec.ai serves diverse professionals: students capturing lectures, business teams documenting meetings, 
+              journalists transcribing interviews, content creators transforming ideas, and researchers analyzing qualitative data.
+            </p>
             
             <h2 className="text-xl font-semibold text-white mt-6 mb-3">Our Team</h2>
             

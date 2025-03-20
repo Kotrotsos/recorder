@@ -2,6 +2,18 @@
 
 This file documents all the changes made by AI assistance.
 
+## March 20, 2025 - 13:22 CET
+
+### Updated
+- Updated the About page content with a more detailed description of rec.ai
+- Enhanced the "Key Features" section with more specific feature descriptions
+- Added new sections: "Value-Based Pricing" and "Perfect For" to better explain the product offering
+- Improved the formatting and organization of the About page content
+- Maintained the existing page styling while updating the content
+
+### Files Changed
+- Modified `src/components/AboutPageClient.tsx` - Updated the content while preserving the styling
+
 ## May 17, 2024 - 20:30 CET
 
 ### Fixed
@@ -1431,3 +1443,79 @@ This update resolves a critical issue where API requests were failing with 404 e
 
 ### Purpose
 This update fixes an inconsistency between the API response format and what the UI component expects. The API was returning the correct response with content and title, but was missing the `success` flag that the UI component checks. Adding this flag ensures that successful results are properly displayed in the UI instead of showing an error message.
+
+## 2023-07-13
+### Custom Colors Fix and Loading Improvements
+
+#### Changes Made:
+- Updated `ui-settings-context.tsx` to apply custom colors to all pages, not just the account page
+- Modified the `applyUISettings` function to target a broader range of HTML elements
+- Enhanced the color application to work across all pages by targeting common container elements
+- Added immediate and delayed application of styles when pathname changes to ensure styles are applied correctly
+- Improved text color handling to apply foreground color to more text elements
+
+#### Loading Improvements:
+- Integrated UI settings loading state with the app loading context
+- Updated the `LoadingOverlay` component to display a styled loading screen that uses the custom colors
+- Implemented a mechanism to show the loading overlay until custom colors are fully applied
+- Added the missing `gradientShift` animation to globals.css for consistent gradient animation
+- Created a more robust loading system that prevents flash of unstyled content
+
+#### Files Modified:
+- `src/contexts/ui-settings-context.tsx` - Updated to apply colors to all pages
+- `src/contexts/loading-context.tsx` - Modified to integrate with UI settings loading
+- `src/components/ui/loading-overlay.tsx` - Enhanced to show styled loading screen
+- `src/app/globals.css` - Added missing gradient animation
+
+This update ensures that custom colors are consistently applied across all pages in the application and eliminates the flash of unstyled content by loading the colors before rendering the page content.
+
+## 2023-07-14
+### Enhanced Login Component Responsiveness
+
+#### Changes Made:
+- Modified the authentication layout to be responsive across different screen sizes
+- Login component now displays at 50% width on large screens (lg and above)
+- Medium screens (md to lg) show the component at 80% width
+- Small screens (below md) show the component at full width
+- Added smooth transition animation when resizing the browser window
+
+#### Files Modified:
+- `src/components/auth/auth-layout.tsx` - Updated the main content container to have responsive width
+
+This change improves the user experience on larger screens by creating a more focused login form that doesn't stretch across the entire screen, while maintaining full width on mobile for better usability on smaller devices.
+
+## 2023-07-15
+### Removed Background Styles from Main Tags
+
+#### Changes Made:
+- Updated all layout components to set explicit `background: transparent` on main tags
+- Modified the following files to prevent background styles from affecting main elements:
+  - `src/components/auth/auth-layout.tsx`
+  - `src/components/auth/terms-layout.tsx`
+  - `src/components/PageContent.tsx`
+  - `src/components/PricingPageClient.tsx`
+  - `src/components/AboutPageClient.tsx`
+- Ensured background from parent containers shows through main elements 
+- Maintained layout structure while removing potential background color conflicts
+
+#### Purpose:
+This change ensures that the background styling from parent containers properly shows through the main content areas, preventing any unwanted background colors or styles on main elements.
+
+## 2023-07-16
+### Fixed Background Style Removal from Main Tags
+
+#### Changes Made:
+- Updated the `ui-settings-context.tsx` file to properly exclude main elements from receiving background styles
+- Added explicit filtering to prevent main elements from being styled with backgrounds
+- Removed previously added inline transparent background styles from all layout files
+- Added explicit code to set main elements to transparent background
+
+#### Files Modified:
+- `src/contexts/ui-settings-context.tsx` - Modified to filter out main elements from styling
+- `src/components/auth/auth-layout.tsx` - Removed inline background style
+- `src/components/auth/terms-layout.tsx` - Removed inline background style
+- `src/components/PageContent.tsx` - Removed inline background style
+- `src/components/PricingPageClient.tsx` - Removed inline background style
+- `src/components/AboutPageClient.tsx` - Removed inline background style
+
+This change ensures that background styles from the UI settings context are not applied to main elements, preventing unwanted backgrounds from appearing on these elements.

@@ -111,7 +111,7 @@ export default function AuthLayout({ children, title, description }: AuthLayoutP
       
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 py-10">
-        <div className="w-full">
+        <div className="w-full max-w-full md:max-w-[80%] lg:max-w-[50%] mx-auto transition-all duration-300">
           <h1 className="text-3xl font-bold text-center text-white mb-6">{title}</h1>
           {description && <p className="text-lg text-white/80 text-center mb-6">{description}</p>}
           <div className="rounded-xl">

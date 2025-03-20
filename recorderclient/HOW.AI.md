@@ -3002,3 +3002,55 @@ This approach solves several issues:
 4. **Server-side rendering compatibility**: Includes a fallback for server-side contexts where `window` is not available
 
 All API client functions should follow this pattern to ensure consistent behavior across different environments and deployment scenarios.
+
+## Custom Colors System
+
+### Overview
+The custom colors system allows users to personalize the application's appearance by setting their preferred color scheme. The system supports two modes:
+
+1. **Fun Mode**: Uses a gradient background with three color points (from, via, to)
+2. **Flat Mode**: Uses a solid background color
+
+Each mode also allows customization of the foreground color (text and UI elements).
+
+### Implementation Details
+
+#### Key Components
+- **UISettingsProvider**: Context provider that manages UI settings state and provides methods for updating, saving, and applying UI settings
+- **LoadingOverlay**: Component that displays a loading screen styled with custom colors while the page loads
+- **LoadingContext**: Integrates with UISettingsProvider to ensure colors are loaded before content is displayed
+
+#### How Custom Colors Are Applied
+1. **Initial Load**:
+   - UISettingsProvider fetches user settings from the database
+   - LoadingContext shows a loading overlay while settings are being fetched
+   - Once settings are loaded, the `applyUISettings` function applies colors to the DOM
+   - LoadingContext waits a short period to ensure styles are applied before showing content
+
+2. **Color Application Strategy**:
+   - The system targets multiple container selectors to find all relevant elements
+   - For gradient mode, it applies a linear gradient with animation
+   - For flat mode, it applies a solid background color
+   - Text elements receive the custom foreground color
+   - The system intelligently skips elements that already have background images
+
+3. **Preventing Flash of Unstyled Content**:
+   - Content is initially hidden while styles are loading
+   - LoadingOverlay displays a styled loading screen matching the user's color preferences
+   - Content is only revealed after styles are fully applied
+   - Periodic reapplication ensures styles persist during dynamic content changes
+
+4. **Page Transitions**:
+   - When the pathname changes, styles are immediately reapplied
+   - A timer ensures styles are applied to any newly rendered content
+   - For the first few seconds after a page load, styles are periodically checked and reapplied
+
+### Technical Challenges
+- **DOM Targeting**: Finding the right elements to apply styles to without affecting elements that should maintain their default styling
+- **Timing**: Ensuring styles are applied before content is visible to prevent unstyled content flash
+- **Cross-Page Consistency**: Making sure custom colors work consistently across all pages with different layouts
+
+### Performance Considerations
+- Style application is batched and debounced to prevent excessive DOM operations
+- Animation is applied via CSS rather than JavaScript for better performance
+- Strategic timeouts and intervals prevent over-application of styles while ensuring consistency
