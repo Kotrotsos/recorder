@@ -1,5 +1,40 @@
 # CHANGELOG.AI
 
+## March 21, 2025 - 09:35 CET
+
+### Improved
+- **Enhanced** dropdown icon visibility throughout the application
+- **Increased** opacity and size of dropdown chevron icons for better visibility
+- **Added** explicit white color to all dropdown icons for better contrast
+- **Fixed** issue where dropdown indicators were difficult to see on the dark background
+- **Files modified**: 
+  - src/components/ui/select.tsx
+  - src/components/audio/audio-recorder.tsx
+  - src/components/auth/webhook-settings.tsx
+
+This change significantly improves the visibility of dropdown indicators across the application by making the chevron icons larger, increasing their opacity to 100%, and ensuring they have a white color that stands out against the dark backgrounds. The change affects all dropdown selectors in both the audio recorder component and webhook settings.
+
+## March 21, 2025 - 09:30 CET
+
+### Fixed
+- **Fixed** edit functionality to ensure recorder component expands when clicking edit
+- **Resolved** issue where editing was impossible because recorder remained minimized
+- **Enhanced** user experience when using the edit feature in expanded cards
+- **Files modified**: src/components/audio/audio-recorder.tsx
+
+This change fixes an issue where clicking the edit button in an expanded card would load the transcript into the editor but the recorder component would remain minimized, making it impossible for users to see or interact with the editor. The fix ensures the recorder component automatically expands when the edit feature is used.
+
+## March 21, 2025 - 09:00 CET
+
+### Added
+- **Added** edit functionality to expanded card view with pencil icon
+- **Implemented** feature to bring original transcript back to recording component for new transformations
+- **Enhanced** workflow by allowing users to quickly edit or reuse transcripts for different processing
+- **Improved** UI with clear visual indicators for edit functionality
+- **Files modified**: src/components/audio/audio-recorder.tsx
+
+This change adds a new edit button (pencil icon) in the bottom right of expanded cards. When clicked, it allows users to bring the original transcript back to the recording component's Write tab so they can use it to generate a new transformation or edit it further.
+
 ## March 20, 2025 - 21:36 CET
 
 ### Fixed
@@ -1668,3 +1703,25 @@ This change ensures that background styles from the UI settings context are not 
 - **Files modified**: src/components/audio/audio-recorder.tsx
 
 This change fixes a runtime error that occurred when a user without any custom prompts selected "Use Custom Prompt" in the Write tab. The error was caused by a Select.Item component having an empty string value, which is not allowed according to the component's specifications.
+
+## 2024-05-30 - Removed Summarize Text and Analyze Text Options from UI
+
+### Changes:
+- **Removed** "Summarize Text" and "Analyze Text" options from the Write tab dropdown to match the code
+- **Verified** that only "Process Text" and "Use Custom Prompt" options are available as expected
+
+This change ensures the UI matches the underlying code, which previously had these options removed. The simplification helps provide a clearer user experience by focusing on the most essential functions and reducing cognitive load.
+
+## 2025-03-20 - Verified Removal of Summarize Text and Analyze Text Options from UI
+
+### Changes:
+- **Verified** that the code correctly only includes "Process Text" and "Use Custom Prompt" options
+- **Identified** potential UI caching issue where removed options are still displaying
+- **Documented** the correct options structure in HOW.AI.md
+
+### Recommended Fix:
+1. Clear browser cache and reload the application
+2. If the issue persists, check if the client is using an older deployed version
+3. Inspect the HTML elements to see if there are hidden/styled elements that shouldn't be visible
+
+This ensures the UI matches the underlying code, which previously had these options removed. The simplification helps provide a clearer user experience by focusing on the most essential functions and reducing cognitive load.

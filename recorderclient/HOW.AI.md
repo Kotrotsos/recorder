@@ -2,6 +2,47 @@
 
 This file documents complex parts of the codebase and explains how they work.
 
+## Transcript Edit Feature in Expanded Cards
+
+### March 21, 2025
+
+The audio recorder component now includes an edit functionality that allows users to reuse transcripts for further processing. This feature enables a more efficient workflow by letting users bring transcript content back to the recorder component for new transformations.
+
+### Implementation Details
+
+1. **UI Component**:
+   - A pencil icon button is added to the footer of expanded card modals
+   - For transcript cards, the button allows direct editing of the transcript
+   - For summary/analysis cards with an associated transcript, the button allows reusing the original transcript
+
+2. **Workflow**:
+   - When a user clicks the edit button in an expanded card:
+     1. The modal is closed
+     2. The transcript content is copied to the text input area
+     3. The UI automatically switches to the "Write" tab
+     4. The recorder component is expanded (not minimized) for visibility 
+     5. The textarea is focused for immediate editing
+
+3. **State Management**:
+   - A new `activeTab` state variable tracks and controls which tab is currently active
+   - The `Tabs` component uses controlled state instead of the default value approach
+   - This allows programmatic switching between tabs when edit is clicked
+   - The `isMinimized` state is set to `false` to ensure the recorder is expanded
+
+4. **Technical Implementation**:
+   - For transcript cards (`selectedCard.type === 'transcribe'`), the content is directly used
+   - For non-transcript cards that have an original transcript, the content is retrieved from the `transcriptMap`
+   - The feature ensures transcripts aren't lost when they're deleted from the UI, allowing for easy recovery and reuse
+
+### User Experience Benefits
+
+This feature provides several workflow improvements:
+- Allows users to iteratively refine transcripts and transformations
+- Prevents loss of work by making it easy to reuse content
+- Creates a more seamless experience by connecting the expanded view back to the editing flow
+- Reduces the need to manually copy-paste content between views
+- Ensures the editor is visible by automatically expanding the recorder
+
 ## Simplified Audio Processing Workflow
 
 ### May 23, 2025
@@ -3451,3 +3492,16 @@ A new "Write" tab has been added to the audio recorder interface, allowing users
    - Matching the options available in the Record tab
    - Custom prompt support is fully implemented, including loading user prompts
    - The submit button is disabled if "Use Custom Prompt" is selected but no prompt is chosen
+
+## Write Tab Processing Options
+
+The Write tab offers a streamlined set of processing options for text input:
+
+1. **Process Text** - The primary option that allows for:
+   - **Keep Text As-Is** - Makes minor improvements to the text while preserving the original content
+   - **Condense Text** - Removes unnecessary content and focuses on the core message
+   - **Expand Text** - Adds context and details to enhance the original text
+
+2. **Use Custom Prompt** - For authenticated users, allows applying custom prompts to the text
+
+Note that "Summarize Text" and "Analyze Text" options were removed to simplify the UI and maintain consistency with the Record and Upload tabs.

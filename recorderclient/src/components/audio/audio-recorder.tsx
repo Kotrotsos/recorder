@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Upload, Mic, Square, Play, Pause, Save, Trash2, PlusCircle, X, Maximize2, Minimize2, ChevronDown, ChevronUp, Grid, List, ArrowUpDown, ArrowDown, ArrowUp, Unlink, Copy, FileText } from "lucide-react"
+import { Upload, Mic, Square, Play, Pause, Save, Trash2, PlusCircle, X, Maximize2, Minimize2, ChevronDown, ChevronUp, Grid, List, ArrowUpDown, ArrowDown, ArrowUp, Unlink, Copy, FileText, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -56,6 +56,8 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   const [lastTranscriptionId, setLastTranscriptionId] = useState<string | null>(null);
   // View mode state
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
+  // Add state for active tab
+  const [activeTab, setActiveTab] = useState<"record" | "upload" | "write">("record");
   // Sort direction state
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   // Add new state for transcript collapse on mobile
@@ -2194,7 +2196,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
           </div>
         ) : (
         <CardContent className="p-5">
-          <Tabs defaultValue="record" className="w-full">
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "record" | "upload" | "write")} className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-6 bg-white/10 p-1 rounded-lg">
               <TabsTrigger
                 value="record"
@@ -2338,7 +2340,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                     value={selectedAiAction}
                     onValueChange={setSelectedAiAction}
                   >
-                    <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30">
+                    <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30 [&_svg]:text-white [&_svg]:opacity-100">
                       <SelectValue placeholder="Select AI action" />
                       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
                         <path d="m6 9 6 6 6-6"/>
@@ -2358,7 +2360,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                       value={transcriptProcessingType}
                       onValueChange={(value) => setTranscriptProcessingType(value as 'keep-as-is' | 'condense' | 'expand')}
                     >
-                      <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30">
+                      <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30 [&_svg]:text-white [&_svg]:opacity-100">
                         <SelectValue placeholder="Select processing type" />
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
                           <path d="m6 9 6 6 6-6"/>
@@ -2377,7 +2379,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                       value={selectedPromptId}
                       onValueChange={setSelectedPromptId}
                     >
-                      <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30">
+                      <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30 [&_svg]:text-white [&_svg]:opacity-100">
                         <SelectValue placeholder={isLoadingPrompts ? "Loading prompts..." : "Select a prompt"} />
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
                           <path d="m6 9 6 6 6-6"/>
@@ -2549,7 +2551,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                       value={selectedAiAction}
                       onValueChange={setSelectedAiAction}
                     >
-                      <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30">
+                      <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30 [&_svg]:text-white [&_svg]:opacity-100">
                         <SelectValue placeholder="Select AI action" />
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
                           <path d="m6 9 6 6 6-6"/>
@@ -2569,7 +2571,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                         value={transcriptProcessingType}
                         onValueChange={(value) => setTranscriptProcessingType(value as 'keep-as-is' | 'condense' | 'expand')}
                       >
-                        <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30">
+                        <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30 [&_svg]:text-white [&_svg]:opacity-100">
                           <SelectValue placeholder="Select processing type" />
                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
                             <path d="m6 9 6 6 6-6"/>
@@ -2588,7 +2590,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                         value={selectedPromptId}
                         onValueChange={setSelectedPromptId}
                       >
-                        <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30">
+                        <SelectTrigger className="w-full h-12 text-white text-base bg-white/10 border-white/20 focus:ring-white/30 [&_svg]:text-white [&_svg]:opacity-100">
                           <SelectValue placeholder={isLoadingPrompts ? "Loading prompts..." : "Select a prompt"} />
                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
                             <path d="m6 9 6 6 6-6"/>
@@ -2642,6 +2644,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                 <Textarea 
                   value={textContent}
                   onChange={(e) => setTextContent(e.target.value)}
+                  name="custom-text"
                   placeholder="Enter your text here..."
                   className="min-h-[200px] bg-white/5 border-white/20 text-white resize-y mb-4"
                 />
@@ -2653,7 +2656,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                         value={selectedAiAction}
                         onValueChange={setSelectedAiAction}
                       >
-                        <SelectTrigger className="w-full h-10 bg-white/10 border-white/20 text-white">
+                        <SelectTrigger className="w-full h-10 bg-white/10 border-white/20 text-white [&_svg]:text-white [&_svg]:opacity-100">
                           <SelectValue placeholder="Select action" />
                         </SelectTrigger>
                         <SelectContent>
@@ -2670,7 +2673,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                         value={transcriptProcessingType}
                         onValueChange={(value) => setTranscriptProcessingType(value as 'keep-as-is' | 'condense' | 'expand')}
                       >
-                        <SelectTrigger className="w-full h-10 bg-white/10 border-white/20 text-white">
+                        <SelectTrigger className="w-full h-10 bg-white/10 border-white/20 text-white [&_svg]:text-white [&_svg]:opacity-100">
                           <SelectValue placeholder="Select processing type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -2688,7 +2691,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                         value={selectedPromptId}
                         onValueChange={setSelectedPromptId}
                       >
-                        <SelectTrigger className="w-full h-10 bg-white/10 border-white/20 text-white">
+                        <SelectTrigger className="w-full h-10 bg-white/10 border-white/20 text-white [&_svg]:text-white [&_svg]:opacity-100">
                           <SelectValue placeholder="Select prompt" />
                         </SelectTrigger>
                         <SelectContent>
@@ -2905,7 +2908,78 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                   )}
                 </Button>
                 
-                {/* Removing the translate dropdown and button */}
+                {/* Add edit button */}
+                {selectedCard.type === 'transcribe' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 text-white/70 hover:text-white hover:bg-white/10"
+                    onClick={() => {
+                      // Close the modal
+                      setModalOpen(false);
+                      
+                      // Set the transcript content for further processing
+                      setTextContent(selectedCard.content);
+                      setTranscriptContent(selectedCard.content);
+                      
+                      // Ensure the recorder is expanded, not minimized
+                      setIsMinimized(false);
+                      
+                      // Switch to text input mode by changing the activeTab state
+                      setActiveTab("write");
+                      
+                      // Focus the textarea after a small delay to ensure UI update
+                      setTimeout(() => {
+                        const textarea = document.querySelector('textarea[name="custom-text"]') as HTMLTextAreaElement;
+                        if (textarea) {
+                          textarea.focus();
+                        }
+                      }, 100);
+                    }}
+                    title="Edit transcript"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                
+                {/* If the card is not a transcript but has an original transcript, also add edit button */}
+                {selectedCard.type !== 'transcribe' && (
+                  (selectedCard.originalId || originalIdMap[selectedCard.id]) && 
+                  transcriptMap[selectedCard.id] && 
+                  transcriptMap[selectedCard.id] !== "__TRANSCRIPT_DELETED__" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 text-white/70 hover:text-white hover:bg-white/10"
+                      onClick={() => {
+                        // Close the modal
+                        setModalOpen(false);
+                        
+                        // Set the original transcript content for further processing
+                        const transcriptContent = transcriptMap[selectedCard.id];
+                        setTextContent(transcriptContent);
+                        setTranscriptContent(transcriptContent);
+                        
+                        // Ensure the recorder is expanded, not minimized
+                        setIsMinimized(false);
+                        
+                        // Switch to text input mode by changing the activeTab state
+                        setActiveTab("write");
+                        
+                        // Focus the textarea after a small delay to ensure UI update
+                        setTimeout(() => {
+                          const textarea = document.querySelector('textarea[name="custom-text"]') as HTMLTextAreaElement;
+                          if (textarea) {
+                            textarea.focus();
+                          }
+                        }, 100);
+                      }}
+                      title="Use original transcript for new transform"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  )
+                )}
               </div>
             </div>
           )}

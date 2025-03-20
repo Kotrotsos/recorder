@@ -156,7 +156,7 @@ export default function WebhookSettings({ user }: WebhookSettingsProps) {
                 >
                   <SelectTrigger 
                     id="webhookEvent" 
-                    className="bg-white/10 border-white/20 text-white focus:border-white/30 focus:ring-white/30 h-12"
+                    className="bg-white/10 border-white/20 text-white focus:border-white/30 focus:ring-white/30 h-12 [&_svg]:text-white [&_svg]:opacity-100"
                   >
                     <SelectValue placeholder="Select an event" />
                   </SelectTrigger>
