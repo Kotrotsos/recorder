@@ -2658,9 +2658,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="transcribe">Process Text</SelectItem>
-                          <SelectItem value="summarize">Summarize Text</SelectItem>
-                          <SelectItem value="analyze">Analyze Text</SelectItem>
-                          <SelectItem value="custom-prompt">Custom Prompt</SelectItem>
+                          <SelectItem value="custom-prompt">Use Custom Prompt</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -2684,10 +2682,36 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                     </div>
                   )}
                   
+                  {selectedAiAction === "custom-prompt" && (
+                    <div className="w-full">
+                      <Select
+                        value={selectedPromptId}
+                        onValueChange={setSelectedPromptId}
+                      >
+                        <SelectTrigger className="w-full h-10 bg-white/10 border-white/20 text-white">
+                          <SelectValue placeholder="Select prompt" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {customPrompts.length > 0 ? (
+                            customPrompts.map(prompt => (
+                              <SelectItem key={prompt.id} value={prompt.id}>
+                                {prompt.title}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-prompts-found" disabled>
+                              No custom prompts found
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
                   <Button
                     variant="default"
                     className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white h-12 text-base"
-                    disabled={aiProcessing || !textContent.trim()}
+                    disabled={aiProcessing || !textContent.trim() || (selectedAiAction === "custom-prompt" && (!selectedPromptId || customPrompts.length === 0))}
                     onClick={processWithAI}
                   >
                     {aiProcessing ? "Processing..." : selectedAiAction === "transcribe" 

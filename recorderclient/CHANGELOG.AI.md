@@ -1,5 +1,17 @@
 # CHANGELOG.AI
 
+## March 20, 2025 - 21:36 CET
+
+### Fixed
+- **Fixed** dropdown options in the Write tab to match the Record tab
+- **Removed** "Summarize" and "Analyze" options from the Write tab
+- **Added** custom prompt support to the Write tab
+- **Improved** consistency between tabs for a better user experience
+- **Enhanced** button disabling logic for custom prompts in the Write tab
+- **Files modified**: src/components/audio/audio-recorder.tsx
+
+This change ensures consistency across all tabs (Record, Upload, and Write) by standardizing the available AI processing options. The Write tab now offers the same functionality as the Record tab, including support for custom prompts when the user is authenticated.
+
 ## March 20, 2025 - 20:22 CET
 
 ### Added
@@ -1646,3 +1658,13 @@ This change ensures that background styles from the UI settings context are not 
 
 ### Files Changed
 - Modified `src/components/ui/loading-overlay.tsx`
+
+## March 20, 2025 - 21:38 CET
+
+### Fixed
+- **Fixed** runtime error in the Write tab when selecting "Use Custom Prompt" option
+- **Updated** SelectItem fallback value to use a non-empty string ("no-prompts-found") instead of an empty string
+- **Resolved** the "A <Select.Item /> must have a value prop that is not an empty string" error
+- **Files modified**: src/components/audio/audio-recorder.tsx
+
+This change fixes a runtime error that occurred when a user without any custom prompts selected "Use Custom Prompt" in the Write tab. The error was caused by a Select.Item component having an empty string value, which is not allowed according to the component's specifications.

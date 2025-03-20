@@ -3445,3 +3445,9 @@ A new "Write" tab has been added to the audio recorder interface, allowing users
 4. **User Interface**:
    - The Write tab UI matches the style of the Upload tab for consistency
    - Audio playback controls are not available in the Write tab since there's no audio content
+
+5. **Consistent AI Processing Options**:
+   - Only "Process Text" and "Use Custom Prompt" options are available in the dropdown
+   - Matching the options available in the Record tab
+   - Custom prompt support is fully implemented, including loading user prompts
+   - The submit button is disabled if "Use Custom Prompt" is selected but no prompt is chosen
