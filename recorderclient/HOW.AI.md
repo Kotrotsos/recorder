@@ -2,6 +2,45 @@
 
 This file documents complex parts of the codebase and explains how they work.
 
+## Simplified Audio Processing Workflow
+
+### May 23, 2025
+
+The audio recorder component has been simplified to focus on transcript processing and custom prompts, removing the summarize and analyze options from the dropdown menu.
+
+### Implementation Details
+
+1. **Default Action**: 
+   - The default selected action is now "transcribe" instead of "summarize"
+   - This ensures users see transcript processing options by default
+   - The AI action dropdown only shows "Process Transcript" and "Use Custom Prompt" (for authenticated users)
+
+2. **Processing Options**:
+   - When "Process Transcript" is selected, users can choose between:
+     - Keep As Is (Minor Fixes)
+     - Condense (Remove Fluff)
+     - Expand (Add Context)
+   - These options provide different ways to process the raw transcript text
+
+3. **Custom Prompts**:
+   - Authenticated users can still access the "Use Custom Prompt" option
+   - This allows for personalized processing of transcripts with user-defined prompts
+   - Custom prompts are loaded from the database and displayed in a secondary dropdown
+
+4. **Code Structure**:
+   - The `processWithAI` function has been simplified to only handle "transcribe" and "custom-prompt" cases
+   - The removed "summarize" and "analyze" cases significantly reduced code complexity
+   - The UI and button text dynamically update based on the selected processing option
+
+### User Experience
+
+From a user perspective, the simplified workflow focuses on:
+1. Recording or uploading audio to get a transcript
+2. Choosing how to process that transcript (as-is, condensed, or expanded)
+3. Alternatively, using a custom prompt to process the transcript (for authenticated users)
+
+This streamlined approach makes the interface more focused and easier to understand, highlighting the primary use case of generating and processing transcripts.
+
 ## Settings Page Layout Improvement
 
 ### March 14, 2025
@@ -3275,3 +3314,134 @@ To avoid similar issues in the future:
 4. **Consider component rerender patterns** when designing style update logic
 
 This approach reduces the chance of styling bugs during component rerenders and provides more predictable styling behavior across different browsers.
+
+## Transcript Display System
+
+The transcript display system in the audio recorder application works through a complex interaction of components and state management:
+
+### 1. Key State Variables
+
+- `transcriptContent`: Stores the current transcript text from the most recent recording/upload
+- `transcriptMap`: A map object that stores transcripts by their ID for persistence and reuse
+- `lastTranscriptionId`: UUID of the last created transcription (for database reference)
+- `lastTranscriptionNumericId`: A numeric version of the UUID for easier indexing in the UI
+
+### 2. Transcript Content Resolution Logic
+
+The `getTranscriptContent` function determines what text to display using the following priority sequence:
+
+1. Check if the transcript already exists in the `transcriptMap` for the requested ID
+2. Look for the transcript in the `processedResults` array for matching content
+3. Use the direct `transcriptContent` state variable if the requested ID matches `lastTranscriptionNumericId`
+4. If an `originalId` reference exists, fetch from database and set loading state
+5. If `lastTranscriptionId` exists but content isn't loaded yet, fetch from DB
+6. Finally, if no source is found, return "No transcript available"
+
+### 3. Workflow - Recording/Upload to Display
+
+1. When audio is recorded or a file uploaded:
+   - API transcribes the audio and returns transcript text
+   - `transcriptContent` state is immediately updated
+   - For authenticated users, transcript is saved to database
+   - Generated `lastTranscriptionId` is converted to numeric format
+   - Both IDs and the transcript content are stored in state maps
+
+2. When transcript needs to be displayed:
+   - UI requests content via `getTranscriptContent(lastTranscriptionNumericId)`
+   - Function resolves content using the priority logic above
+   - For authenticated users, content may be fetched from database
+   - If content is still loading, a loading message is shown
+
+### 4. Common Issues and Fixes
+
+- **"No transcript available" despite successful processing**:
+  The issue occurs when the `lastTranscriptionNumericId` isn't immediately updated after receiving and saving a transcript. The fix ensures this ID is set right after transcription is created, and the `getTranscriptContent` function explicitly checks for the `transcriptContent` state variable.
+
+- **Transcript not persisting between sessions**:
+  Transcripts are stored in database for authenticated users and retrieved on component mount.
+
+- **Transcript visible in console but not UI**:
+  This happens when the console shows a successful API response, but the UI state update hasn't propagated. The fix ensures immediate state updates and proper mapping between result IDs and content.
+
+### 5. Authentication Considerations
+
+The transcript system behaves differently based on authentication status:
+- Authenticated users: Transcripts are saved to database and can be accessed across sessions
+- Unauthenticated users: Transcripts exist only in memory during the current session
+
+## Empty State Display
+
+### March 20, 2025
+
+The audio recorder component displays a special empty state card when no recordings have been created yet. This provides a better user experience by offering visual guidance instead of showing a blank page.
+
+### Implementation Details
+
+1. **Conditional Rendering**:
+   - The empty state card is only displayed when `processedResults.length === 0`
+   - It's placed at the same level as the main content area that shows recordings
+
+2. **Visual Design**:
+   - Uses a semi-transparent card with a subtle background (`bg-white/5`)
+   - Has a prominent microphone icon to indicate the recording functionality
+   - Displays an encouraging message: "Press record and make magic happen"
+   - Includes a visual recording button hint at the bottom
+   - Maintains consistent styling with the rest of the application (border, backdrop blur, etc.)
+
+3. **Component Structure**:
+   ```jsx
+   {processedResults.length === 0 && (
+     <div className="flex justify-center items-center h-[calc(100vh-200px)]">
+       <div className="w-full max-w-md mx-auto">
+         <div className="h-[280px] border border-white/20 rounded-lg backdrop-blur-md shadow-lg bg-white/5 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+           <Mic className="h-16 w-16 mb-4 text-white/30" />
+           <h3 className="text-xl font-medium text-white mb-2">Ready to Record</h3>
+           <p className="text-white/70 mb-6">Press record and make magic happen</p>
+           <div className="w-40 h-10 border border-white/30 rounded-full flex items-center justify-center">
+             <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center animate-pulse">
+               <Mic className="h-4 w-4 text-white/70" />
+             </div>
+           </div>
+         </div>
+       </div>
+     </div>
+   )}
+   ```
+
+4. **Animation**:
+   - The record button hint uses an `animate-pulse` animation to draw attention
+   - This subtle animation invites the user to interact with the recording controls
+
+5. **User Experience**:
+   - Provides clear direction to new users on how to get started
+   - Creates a more welcoming first-time experience instead of an empty canvas
+   - Maintains vertical centering to ensure proper placement on all screen sizes
+   - Uses a max width to ensure readability and proper presentation on larger screens
+
+This empty state design follows best practices for user onboarding by providing visual cues and instructions when no content exists yet, helping to guide users through their first interaction with the application.
+
+## Write Tab Implementation
+
+### March 20, 2025
+
+A new "Write" tab has been added to the audio recorder interface, allowing users to directly input text for processing instead of recording or uploading audio.
+
+### Implementation Details
+
+1. **Tab Structure**:
+   - The tab grid has been expanded from 2 columns to 3 columns to accommodate the new Write tab
+   - Tabs are now "Record", "Upload", and "Write"
+
+2. **Text Input**:
+   - The Write tab features a large textarea component where users can type or paste text
+   - Text content is stored in a new state variable `textContent`
+   - The submit button is disabled until text is entered
+
+3. **Processing Logic**:
+   - When processing text from the Write tab, the application uses the `textContent` state instead of `transcriptContent`
+   - Modified the processWithAI function to use `textContent || transcriptContent`
+   - UI labels have been adjusted to reflect text processing rather than audio processing
+
+4. **User Interface**:
+   - The Write tab UI matches the style of the Upload tab for consistency
+   - Audio playback controls are not available in the Write tab since there's no audio content

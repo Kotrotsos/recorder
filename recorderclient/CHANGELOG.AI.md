@@ -1,6 +1,72 @@
 # CHANGELOG.AI
 
-This file documents all the changes made by AI assistance.
+## March 20, 2025 - 20:22 CET
+
+### Added
+- **Added** new "Write" tab to the audio recorder interface
+- **Implemented** text input area where users can write or paste text
+- **Modified** the tab grid to have three columns (Record, Upload, Write)
+- **Adjusted** the process button to reflect text processing instead of audio when using the Write tab
+- **Enhanced** processing logic to use typed/pasted text content when available
+- **Files modified**: src/components/audio/audio-recorder.tsx
+
+This change allows users to directly input text in addition to recording or uploading audio, providing a more flexible interface for content creation and AI processing. The Write tab offers the same AI processing options as the other tabs but bypasses audio recording/uploading when the user just wants to work with text.
+
+## March 20, 2025 - 19:04 CET
+
+### Changes
+- **Removed** "Summarize" and "Analyze" options from the audio recorder dropdown
+- **Changed** default selected action from "summarize" to "transcribe"
+- **Simplified** processing workflow to focus on transcript processing and custom prompts
+- **Removed** unused code related to summarize and analyze functions
+- **Modified** error handling in custom prompt processing
+- **File modified**: src/components/audio/audio-recorder.tsx
+
+This change streamlines the user interface to focus on the most commonly used features - transcript processing and custom prompts. It simplifies the codebase by removing less frequently used options and reduces cognitive load for users by presenting fewer choices.
+
+## May 23, 2025 - 17:30 CET
+
+### Changed
+- Removed "Summarize" and "Analyze" options from the audio recorder dropdown
+- Changed default selected action from "summarize" to "transcribe"
+- Simplified the processing workflow to focus on transcript processing and custom prompts
+- Removed unused code related to summarize and analyze functions
+
+### Files Changed
+- Modified `src/components/audio/audio-recorder.tsx`
+
+## March 20, 2025 - 18:52 CET
+
+### Added
+- Added an empty state card that appears when no recordings have been created yet
+- Implemented a semi-transparent card with "Press record and make magic happen" text
+- Added a visual microphone icon and pulsing record button hint
+- Centered the empty state card in the canvas for better visibility
+- Maintained consistent styling with the rest of the application (backdrop blur, border styling)
+- Enhanced first-time user experience with clear visual guidance
+
+### Files Changed
+- Modified `src/components/audio/audio-recorder.tsx` - Added empty state component
+
+## 2023-07-09 17:35 UTC
+
+### Fixed
+
+- Fixed transcript display issue where "No transcript available" was shown even when a transcript had been successfully processed. The problem was occurring because:
+  1. The API was receiving the transcript successfully (visible in console logs)
+  2. But the UI component was not properly updating to display the transcript
+  3. The `getTranscriptContent` function wasn't checking for the direct `transcriptContent` state variable when the resultId matched the `lastTranscriptionNumericId`
+
+### Changes Made
+
+- Added a check in the `getTranscriptContent` function to use the `transcriptContent` state when the resultId matches `lastTranscriptionNumericId`
+- Updated the transcript processing in both recording and file upload functions to immediately set `lastTranscriptionNumericId` after creating a transcription
+- Ensured that the `transcriptContent` is set immediately after receiving the API response
+- Fixed variable scope issues in the `handleFileUpload` function to properly maintain the transcript variable throughout the function execution
+
+### Files Changed
+
+- `src/components/audio/audio-recorder.tsx`
 
 ## March 20, 2025 - 13:31 CET
 
