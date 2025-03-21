@@ -3,7 +3,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { usePathname } from 'next/navigation'
-import { useAuth } from '@/contexts/auth-context'
 
 interface UISettings {
   id?: string
@@ -66,12 +65,13 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
   const lastAppliedTimeRef = useRef<number>(0) // Add a ref to track the last applied timestamp
   const supabase = createClient()
   const pathname = usePathname()
-  const { user } = useAuth() // Use the auth context
 
   useEffect(() => {
     const fetchUISettings = async () => {
       setLoading(true)
       try {
+        const { data: { user } } = await supabase.auth.getUser()
+        
         if (user) {
           // Fetch UI settings from the database
           const { data, error } = await supabase
@@ -109,13 +109,17 @@ export function UISettingsProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Only fetch settings when user changes
-    if (user) {
+    fetchUISettings()
+
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       fetchUISettings()
-    } else {
-      setLoading(false)
+    })
+
+    return () => {
+      subscription.unsubscribe()
     }
-  }, [user, supabase])
+  }, [supabase])
 
   // Check for unsaved changes
   useEffect(() => {

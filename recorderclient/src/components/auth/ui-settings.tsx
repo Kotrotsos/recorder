@@ -15,7 +15,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RefreshCw } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import React from 'react'
-import { useAuth } from '@/contexts/auth-context'
 
 // Default UI settings for reset functionality
 const defaultUISettings = {
@@ -32,11 +31,11 @@ export default function UISettings() {
     uiSettings, 
     updateUISettings, 
     saveUISettings, 
-    hasUnsavedChanges,
-    loading
+    hasUnsavedChanges 
   } = useUISettings()
   
-  const { user } = useAuth()
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -59,6 +58,22 @@ export default function UISettings() {
       setLocalUIMode(uiSettings.ui_mode)
     }
   }, [uiSettings.ui_mode, localUIMode])
+
+  useEffect(() => {
+    const getUser = async () => {
+      setLoading(true)
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        setUser(user)
+      } catch (error) {
+        console.error('Error getting user:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    getUser()
+  }, [supabase.auth])
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault()

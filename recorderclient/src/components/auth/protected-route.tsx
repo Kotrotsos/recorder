@@ -1,25 +1,36 @@
 "use client"
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/auth-context'
+import { createClient } from '@/lib/supabase'
+import { User } from '@supabase/supabase-js'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth()
+  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(null)
   const router = useRouter()
+  const supabase = createClient()
 
   useEffect(() => {
-    // Redirect to login if not authenticated and not still loading
-    if (!loading && !user) {
-      router.push('/login')
-    }
-  }, [loading, user, router])
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
 
-  if (loading) {
+      if (!session) {
+        router.push('/login')
+      } else {
+        setUser(session.user)
+        setIsLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [router, supabase.auth])
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-700 animated-gradient">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">

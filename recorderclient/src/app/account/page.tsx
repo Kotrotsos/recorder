@@ -1,17 +1,29 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { User } from '@supabase/supabase-js'
 import UserProfile from '@/components/auth/user-profile'
 import ProtectedRoute from '@/components/auth/protected-route'
 import AuthLayout from '@/components/auth/auth-layout'
 import WebhookSettings from '@/components/auth/webhook-settings'
 import UISettings from '@/components/auth/ui-settings'
 import CustomPrompts from '@/components/auth/custom-prompts'
-import { useAuth } from '@/contexts/auth-context'
+import { createClient } from '@/lib/supabase'
 
 export default function AccountPage() {
   const [activeSection, setActiveSection] = useState<string>('profile')
-  const { user } = useAuth()
+  const [user, setUser] = useState<User | null>(null)
+  
+  // Get user data
+  useEffect(() => {
+    const fetchUser = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+    }
+    
+    fetchUser()
+  }, [])
   
   const renderSection = () => {
     switch (activeSection) {

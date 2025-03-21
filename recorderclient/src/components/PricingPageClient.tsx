@@ -7,14 +7,15 @@ import StripeCheckout from './StripeCheckout';
 import SupporterBadge from './SupporterBadge';
 import { isLifetimeSupporter } from '@/utils/subscription';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
+import useAuth from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase';
 
 export default function PricingPageClient() {
   console.log("PricingPageClient - Component rendering");
   
-  // Use auth context directly
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  // Use the same useAuth hook that PageContent uses
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const [user, setUser] = useState<any>(null);
   const [isSupporter, setIsSupporter] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   
@@ -25,28 +26,47 @@ export default function PricingPageClient() {
   useEffect(() => {
     console.log("PricingPageClient - Auth state changed:", isAuthenticated ? "Authenticated" : "Not authenticated");
     
-    const checkSupporterStatus = async () => {
-      if (isAuthenticated && user) {
+    const fetchUserAndSupporterStatus = async () => {
+      if (isAuthenticated) {
         try {
-          // Check supporter status
-          const supporter = await isLifetimeSupporter();
-          console.log("PricingPageClient - Supporter status:", supporter);
-          setIsSupporter(supporter);
+          // Get the user details
+          const { data: { user: userData }, error } = await supabase.auth.getUser();
+          
+          if (error) {
+            console.error('Error getting user details:', error);
+            setAuthError(error.message);
+            return;
+          }
+          
+          if (userData) {
+            console.log("PricingPageClient - User details fetched:", userData.id);
+            setUser(userData);
+            
+            // Check supporter status
+            try {
+              const supporter = await isLifetimeSupporter();
+              console.log("PricingPageClient - Supporter status:", supporter);
+              setIsSupporter(supporter);
+            } catch (error) {
+              console.error('Error checking supporter status:', error);
+            }
+          }
         } catch (error) {
-          console.error('Error checking supporter status:', error);
+          console.error('Error in fetchUserAndSupporterStatus:', error);
           setAuthError(`Error: ${error instanceof Error ? error.message : String(error)}`);
         }
-      } else if (!isAuthenticated) {
-        // Not authenticated, reset supporter status
+      } else {
+        // Not authenticated, reset user and supporter status
+        setUser(null);
         setIsSupporter(false);
       }
     };
     
-    // Only check supporter status if we're authenticated and not still loading
+    // Only fetch user details if we're authenticated and not still loading
     if (!authLoading) {
-      checkSupporterStatus();
+      fetchUserAndSupporterStatus();
     }
-  }, [isAuthenticated, authLoading, user]);
+  }, [isAuthenticated, authLoading, supabase]);
 
   // Add a style tag for the animation
   useEffect(() => {
