@@ -3505,3 +3505,36 @@ The Write tab offers a streamlined set of processing options for text input:
 2. **Use Custom Prompt** - For authenticated users, allows applying custom prompts to the text
 
 Note that "Summarize Text" and "Analyze Text" options were removed to simplify the UI and maintain consistency with the Record and Upload tabs.
+
+## Multi-Select and Delete Functionality
+
+The audio recorder component includes a multi-select and delete feature that allows users to select and delete multiple cards at once. This feature is implemented in the `audio-recorder.tsx` file.
+
+### How It Works
+
+1. **Entering Edit Mode**: Click the edit button (pencil icon) next to the view selector
+2. **Selecting Cards**: When in edit mode, round checkboxes appear at the bottom right of each card
+3. **Select All**: A "Select All" button appears when in edit mode, allowing users to select all visible cards at once
+4. **Deselect All**: A "Deselect All" button appears when cards are selected, allowing users to clear the selection
+5. **Multi-Selection**: Click on checkboxes to select multiple cards
+6. **Bulk Deletion**: When cards are selected, a delete button appears above the cards
+7. **Confirmation Dialog**: When deleting multiple items, a confirmation dialog appears showing how many items will be deleted
+8. **Batch Processing**: All selected items are deleted in parallel with Promise.all
+9. **User Feedback**: Success/error messages show how many items were successfully deleted
+
+### Implementation Details
+
+- State variables: 
+  - `editMode` (boolean): Controls whether selection mode is active
+  - `selectedCards` (number array): Tracks which card IDs are currently selected
+  - `multiDeleteItems` (array): Contains detailed information about items to delete
+  - `multiDeleteDialogOpen` (boolean): Controls visibility of the multi-delete confirmation dialog
+
+- Key Functions:
+  - `toggleCardSelection`: Adds/removes card IDs from the selection
+  - `selectAllCards`: Selects all currently visible cards at once
+  - `deselectAllCards`: Clears all selections with a single action
+  - `handleDeleteSelected`: Prepares selected cards for deletion and shows confirmation
+  - `handleConfirmMultiDelete`: Processes the batch deletion of all selected cards
+
+This implementation provides a smooth user experience for managing multiple cards at once and ensures that all selected cards are properly deleted from both the UI and the database.

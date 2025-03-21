@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Upload, Mic, Square, Play, Pause, Save, Trash2, PlusCircle, X, Maximize2, Minimize2, ChevronDown, ChevronUp, Grid, List, ArrowUpDown, ArrowDown, ArrowUp, Unlink, Copy, FileText, Pencil } from "lucide-react"
+import { Upload, Mic, Square, Play, Pause, Save, Trash2, PlusCircle, X, Maximize2, Minimize2, ChevronDown, ChevronUp, Grid, List, ArrowUpDown, ArrowDown, ArrowUp, Unlink, Copy, FileText, Pencil, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -55,11 +55,11 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
   const [lastTranscriptionId, setLastTranscriptionId] = useState<string | null>(null);
   // View mode state
-  const [viewMode, setViewMode] = useState<"card" | "list">("card");
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   // Add state for active tab
   const [activeTab, setActiveTab] = useState<"record" | "upload" | "write">("record");
   // Sort direction state
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   // Add new state for transcript collapse on mobile
   const [isTranscriptCollapsed, setIsTranscriptCollapsed] = useState<boolean>(true);
   
@@ -1561,6 +1561,120 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     setSortDirection(prev => prev === "asc" ? "desc" : "asc");
   };
 
+  const toggleCardSelection = (id: number, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    
+    setSelectedCards(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(cardId => cardId !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+
+  // Select all visible cards
+  const selectAllCards = () => {
+    const allVisibleCardIds = getSortedResults().map(result => result.id);
+    setSelectedCards(allVisibleCardIds);
+  };
+
+  // Deselect all cards
+  const deselectAllCards = () => {
+    setSelectedCards([]);
+  };
+
+  const handleDeleteSelected = () => {
+    // Create a copy of the selectedCards array since we'll be modifying processedResults
+    const cardsToDelete = [...selectedCards];
+    
+    // Set up batch delete confirmation
+    if (cardsToDelete.length > 0) {
+      // First collect all valid items
+      const itemsToDelete = cardsToDelete
+        .map(id => {
+          const result = processedResults.find(r => r.id === id);
+          if (result) {
+            const originalId = result.originalId || originalIdMap[result.id] || null;
+            return { 
+              id: result.id, 
+              type: result.type, 
+              originalId 
+            };
+          }
+          return null;
+        })
+        .filter((item): item is {id: number; type: string; originalId: string | null} => 
+          item !== null
+        );
+      
+      // Now set state with the correctly typed array
+      setMultiDeleteItems(itemsToDelete);
+      
+      // Show a custom delete confirmation dialog
+      setMultiDeleteDialogOpen(true);
+    }
+
+    // Don't reset selection state yet - will be done after confirming deletion
+  };
+
+  // Function to handle actual multi-deletion
+  const handleConfirmMultiDelete = async () => {
+    console.log(`AudioRecorder - Confirming multi-delete for ${multiDeleteItems.length} items`);
+    
+    const deletePromises = multiDeleteItems.map(async (item) => {
+      if (!item.originalId) {
+        console.error(`Cannot delete item ID ${item.id}: missing original ID`);
+        return false;
+      }
+      
+      try {
+        let success = false;
+        
+        if (item.type === 'transcribe') {
+          // Mark the transcription as deleted instead of actually deleting it
+          success = await deleteTranscription(item.originalId);
+        } else if (item.type === 'summarize' || item.type === 'analyze') {
+          // For analyses and summaries, actually delete the record
+          success = await deleteAnalysis(item.originalId);
+        }
+        
+        return success ? item.id : null;
+      } catch (error) {
+        console.error(`Error deleting item ID ${item.id}:`, error);
+        return null;
+      }
+    });
+    
+    const results = await Promise.all(deletePromises);
+    const successfulIds = results.filter(Boolean);
+    
+    if (successfulIds.length > 0) {
+      // Remove the items from processedResults
+      setProcessedResults(prevResults => 
+        prevResults.filter(result => !successfulIds.includes(result.id))
+      );
+      
+      // Notify parent component
+      if (onResultsChange) {
+        onResultsChange(processedResults.filter(result => !successfulIds.includes(result.id)));
+      }
+      
+      toast.success(`Deleted ${successfulIds.length} items successfully`);
+    }
+    
+    if (successfulIds.length < multiDeleteItems.length) {
+      const failedCount = multiDeleteItems.length - successfulIds.length;
+      toast.error(`Failed to delete ${failedCount} items`);
+    }
+    
+    setMultiDeleteDialogOpen(false);
+    setSelectedCards([]);
+    setEditMode(false);
+  };
+
   // Function to handle translation
   const handleTranslate = async (content: string, language: string, title?: string) => {
     console.log("handleTranslate called with:", { content: content?.substring(0, 50) + "...", language, title });
@@ -1896,6 +2010,12 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     loadCustomPrompts()
   }, [isAuthenticated, selectedAiAction])
 
+  // Edit mode state
+  const [editMode, setEditMode] = useState(false);
+  const [selectedCards, setSelectedCards] = useState<number[]>([]);
+  const [multiDeleteItems, setMultiDeleteItems] = useState<Array<{id: number; type: string; originalId: string | null}>>([]);
+  const [multiDeleteDialogOpen, setMultiDeleteDialogOpen] = useState(false);
+
   return (
     <>
       {processedResults.length > 0 && (
@@ -1933,18 +2053,77 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
               >
                 <List className="h-4 w-4" />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 rounded-none text-white/70 hover:text-white ${editMode ? 'bg-white/20' : ''} hover:bg-white/15`}
+                onClick={() => {
+                  setEditMode(!editMode);
+                  if (!editMode) {
+                    setSelectedCards([]);
+                  }
+                }}
+                title={editMode ? "Cancel Edit" : "Edit"}
+              >
+                {editMode ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+              </Button>
             </div>
           </div>
           
           {viewMode === "card" ? (
             <div className="flex justify-center pb-20 mt-2">
               <div className="max-w-6xl w-full">
+                {selectedCards.length > 0 && (
+                  <div className="mb-4 flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20"
+                      onClick={deselectAllCards}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Deselect All
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 border border-red-500/30"
+                      onClick={handleDeleteSelected}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Selected ({selectedCards.length})
+                    </Button>
+                  </div>
+                )}
+                {editMode && selectedCards.length === 0 && (
+                  <div className="mb-4 flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20"
+                      onClick={selectAllCards}
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      Select All
+                    </Button>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                   {getSortedResults().map(result => (
                     <div key={result.id} className="w-full">
                       <div 
                         className="w-full h-[280px] bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-lg overflow-hidden flex flex-col relative"
                       >
+                        {editMode && (
+                          <div 
+                            className="absolute bottom-2 right-2 z-10"
+                            onClick={(e) => toggleCardSelection(result.id, e)}
+                          >
+                            <div className={`h-5 w-5 rounded-full border-2 ${selectedCards.includes(result.id) ? 'bg-green-500 border-green-600' : 'bg-white/10 border-white/30'} flex items-center justify-center cursor-pointer`}>
+                              {selectedCards.includes(result.id) && <Check className="h-3 w-3 text-white" />}
+                            </div>
+                          </div>
+                        )}
                         <div className="p-4 border-b border-white/20 bg-white/5 flex items-center">
                           <Button
                             variant="ghost"
@@ -2119,19 +2298,17 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="bg-gray-800 border border-gray-700 text-white">
+        <AlertDialogContent className="bg-white/10 backdrop-blur-md border border-white/20 text-white">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-300">
-              This will permanently delete this {itemToDelete.type === 'transcribe' ? 'transcription' : 
-                itemToDelete.type === 'summarize' ? 'summary' : 'analysis'}.
-              This action cannot be undone.
+            <AlertDialogTitle>Confirm deletion</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/70">
+              Are you sure you want to delete this item? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-gray-700 text-white hover:bg-gray-600">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="bg-white/10 hover:bg-white/20 text-white border-white/10">Cancel</AlertDialogCancel>
             <AlertDialogAction 
-              className="bg-red-600 text-white hover:bg-red-700" 
+              className="bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 border border-red-500/30"
               onClick={handleConfirmDelete}
             >
               Delete
@@ -2142,21 +2319,44 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
 
       {/* Transcript removal confirmation dialog */}
       <AlertDialog open={transcriptRemovalDialogOpen} onOpenChange={setTranscriptRemovalDialogOpen}>
-        <AlertDialogContent className="bg-gray-800 border border-gray-700 text-white">
+        <AlertDialogContent className="bg-white/10 backdrop-blur-md border border-white/20 text-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Remove transcript reference?</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-300">
+            <AlertDialogDescription className="text-white/70">
               This will remove the transcript reference from this item.
               The transcript will be marked as deleted but can be recovered by an administrator if needed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-gray-700 text-white hover:bg-gray-600">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="bg-white/10 hover:bg-white/20 text-white border-white/10">Cancel</AlertDialogCancel>
             <AlertDialogAction 
-              className="bg-red-600 text-white hover:bg-red-700" 
+              className="bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 border border-red-500/30"
               onClick={() => handleRemoveTranscriptionReference(transcriptToRemove.analysisId, transcriptToRemove.resultId)}
             >
               Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Multi-delete confirmation dialog */}
+      <AlertDialog open={multiDeleteDialogOpen} onOpenChange={setMultiDeleteDialogOpen}>
+        <AlertDialogContent className="bg-white/10 backdrop-blur-md border border-white/20 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm multiple deletion</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/70">
+              Are you sure you want to delete {multiDeleteItems.length} selected items? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-white/10 hover:bg-white/20 text-white border-white/10">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 border border-red-500/30"
+              onClick={handleConfirmMultiDelete}
+            >
+              Delete All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

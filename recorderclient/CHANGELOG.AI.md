@@ -1725,3 +1725,43 @@ This change ensures the UI matches the underlying code, which previously had the
 3. Inspect the HTML elements to see if there are hidden/styled elements that shouldn't be visible
 
 This ensures the UI matches the underlying code, which previously had these options removed. The simplification helps provide a clearer user experience by focusing on the most essential functions and reducing cognitive load.
+
+## Fri Mar 21 00:54:00 CET 2025
+
+### Added Multi-Select and Delete Functionality
+
+- **Added** an edit button next to the view selector (card/list) to enter selection mode
+- **Added** round checkboxes at the bottom right of each card when in edit mode
+- **Added** ability to select multiple cards at once
+- **Added** a deletion tool that appears when cards are selected to delete multiple items at once
+- **Modified** `audio-recorder.tsx` to support multi-selection mode
+
+## Fri Mar 21 01:01:51 CET 2025
+
+### Fixed Multi-Delete Functionality
+
+- **Fixed** an issue where only the last selected card was being deleted instead of all selected cards
+- **Implemented** proper batch deletion with a dedicated confirmation dialog
+- **Added** error handling for multi-delete operations
+- **Enhanced** user feedback with success/error messages showing count of deleted items
+- **Modified** `audio-recorder.tsx` to support true multi-selection deletion
+
+## Fri Mar 21 01:05:10 CET 2025
+
+### Added Select All Functionality for Multi-Selection
+
+- **Added** a "Select All" button that appears when in edit mode
+- **Implemented** function to select all visible cards with a single click
+- **Enhanced** multi-selection feature with a convenient way to select all cards
+- **Modified** `audio-recorder.tsx` to support this new functionality
+- **Improved** user experience when selecting multiple cards
+
+## Fri Mar 21 01:09:32 CET 2025
+
+### Added Deselect All Button for Multi-Selection
+
+- **Added** a "Deselect All" button that appears when cards are selected
+- **Implemented** function to deselect all cards with a single click
+- **Enhanced** multi-selection UI with both Select All and Deselect All options
+- **Improved** user experience by providing a quick way to cancel selection
+- **Modified** `audio-recorder.tsx` to support this new functionality
