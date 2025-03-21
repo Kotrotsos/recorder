@@ -158,8 +158,7 @@ export async function getUserTranscriptions(userId: string) {
       files (filename, file_path)
     `)
     .eq('user_id', userId)
-    .is('deleted', null) // Include records where deleted is null
-    .or('deleted.eq.false') // Include records where deleted is false
+    .not('deleted', 'eq', true) // Explicitly exclude records where deleted=true
     .order('created_at', { ascending: false });
   
   if (error) {
@@ -184,8 +183,7 @@ export async function getTranscription(userId: string, transcriptionId: string) 
     `)
     .eq('id', transcriptionId)
     .eq('user_id', userId)
-    .is('deleted', null) // Exclude deleted transcriptions (null)
-    .or('deleted.eq.false,id.eq.' + transcriptionId) // Or when deleted is false
+    .not('deleted', 'eq', true) // Explicitly exclude records where deleted=true
     .maybeSingle();
   
   if (error) {

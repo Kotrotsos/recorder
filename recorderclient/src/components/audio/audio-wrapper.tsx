@@ -27,8 +27,12 @@ export default function AudioWrapper() {
           const transcriptions = await getUserTranscriptions();
           console.log('AudioWrapper - Loaded transcriptions:', transcriptions.length, transcriptions);
           
+          // Filter out any transcriptions with deleted=true
+          const nonDeletedTranscriptions = transcriptions.filter(t => t.deleted !== true);
+          console.log('AudioWrapper - Filtered non-deleted transcriptions:', nonDeletedTranscriptions.length, nonDeletedTranscriptions);
+          
           // Check if transcriptions have content
-          transcriptions.forEach((t, index) => {
+          nonDeletedTranscriptions.forEach((t, index) => {
             console.log(`AudioWrapper - Transcription ${index} content:`, t.content ? `${t.content.substring(0, 50)}...` : 'No content');
           });
           
@@ -38,7 +42,7 @@ export default function AudioWrapper() {
           
           // Convert to the format expected by the AudioRecorder component
           const formattedResults = [
-            ...transcriptions.map(t => {
+            ...nonDeletedTranscriptions.map(t => {
               console.log(`AudioWrapper - Formatting transcription ${t.id}:`, t.content ? `Content: ${t.content.substring(0, 50)}...` : 'No content');
               return {
                 id: parseInt(t.id.replace(/-/g, '').substring(0, 13), 16), // Generate a numeric ID from UUID

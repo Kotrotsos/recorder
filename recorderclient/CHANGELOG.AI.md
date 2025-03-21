@@ -1,5 +1,19 @@
 # CHANGELOG.AI
 
+## March 21, 2025 - 12:33 CET
+
+### Fixed
+- **Fixed** issue where cards weren't reappearing after page reload even when stored in the database
+- **Improved** handling of the `deleted` flag to ensure consistent behavior across components
+- **Updated** database queries to explicitly filter out records with `deleted=true`
+- **Enhanced** data filtering in the AudioWrapper component to exclude deleted cards
+- **Files modified**:
+  - src/components/audio/audio-wrapper.tsx
+  - src/hooks/useDatabase.ts
+  - src/lib/db.ts
+
+This change ensures that cards with `deleted=false` consistently appear in the frontend, while cards with `deleted=true` are correctly filtered out. The fix standardizes the database query patterns across all relevant functions for consistency and reliability.
+
 ## March 21, 2025 - 09:35 CET
 
 ### Improved
