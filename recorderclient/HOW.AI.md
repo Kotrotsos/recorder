@@ -3538,3 +3538,201 @@ The audio recorder component includes a multi-select and delete feature that all
   - `handleConfirmMultiDelete`: Processes the batch deletion of all selected cards
 
 This implementation provides a smooth user experience for managing multiple cards at once and ensures that all selected cards are properly deleted from both the UI and the database.
+
+## Card and File Deletion System
+
+### March 21, 2025
+
+The application implements a comprehensive deletion system for various types of content (transcriptions, analyses, files). The deletion process differs slightly depending on the content type:
+
+### Content Types and Deletion Strategy
+
+1. **Transcriptions**: For transcription records, we use a soft-delete approach:
+   - Instead of removing the record from the database, we set a `deleted` flag to `true`
+   - This preserves the original data for potential recovery or reference
+   - The UI filters out items marked as deleted
+
+2. **Analyses and Summaries**: For these records, we use a hard-delete approach:
+   - Records are permanently removed from the database
+   - These are considered derivative content that can be regenerated if needed
+
+3. **Files**: Audio files are deleted in two steps:
+   - The file is removed from storage (Supabase storage bucket)
+   - The file record is removed from the database
+
+### Implementation Details
+
+#### Database Functions
+
+The deletion functions are implemented in `src/lib/db.ts`:
+
+1. **deleteTranscription**: Soft-deletes transcriptions by setting the `deleted` flag
+   ```typescript
+   export async function deleteTranscription(userId: string, transcriptionId: string) {
+     const supabase = createClient();
+     
+     console.log(`[DELETE DEBUG] Attempting to soft-delete transcription: transcriptionId=${transcriptionId}, userId=${userId}`);
+     
+     // Instead of deleting, update the deleted column to true
+     const { data, error } = await supabase
+       .from('transcriptions')
+       .update({ deleted: true })
+       .eq('id', transcriptionId)
+       .eq('user_id', userId)
+       .select();
+     
+     if (error) {
+       console.error(`[DELETE DEBUG] Error soft-deleting transcription: ${error.message}`, error);
+       throw new Error(`Error soft-deleting transcription: ${error.message}`);
+     }
+     
+     console.log(`[DELETE DEBUG] Successfully soft-deleted transcription: ${JSON.stringify(data)}`);
+     
+     return data;
+   }
+   ```
+
+2. **deleteAnalysis**: Hard-deletes analysis records
+   ```typescript
+   export async function deleteAnalysis(userId: string, analysisId: string) {
+     const supabase = createClient();
+     
+     console.log(`[DELETE DEBUG] Attempting to delete analysis: analysisId=${analysisId}, userId=${userId}`);
+     
+     const { data, error } = await supabase
+       .from('analyses')
+       .delete()
+       .eq('id', analysisId)
+       .eq('user_id', userId)
+       .select();
+     
+     if (error) {
+       console.error(`[DELETE DEBUG] Error deleting analysis: ${error.message}`, error);
+       throw new Error(`Error deleting analysis: ${error.message}`);
+     }
+     
+     console.log(`[DELETE DEBUG] Successfully deleted analysis: ${JSON.stringify(data)}`);
+     
+     return true;
+   }
+   ```
+
+3. **deleteFile**: Two-step process to delete both storage and database records
+   ```typescript
+   export async function deleteFile(userId: string, fileId: string) {
+     const supabase = createClient();
+     
+     // Get file path first
+     const { data: fileData } = await supabase
+       .from('files')
+       .select('file_path')
+       .eq('id', fileId)
+       .eq('user_id', userId)
+       .single();
+     
+     // Delete file from storage
+     await supabase.storage
+       .from('audio-files')
+       .remove([fileData.file_path]);
+     
+     // Delete file record from database
+     await supabase
+       .from('files')
+       .delete()
+       .eq('id', fileId)
+       .eq('user_id', userId);
+     
+     return true;
+   }
+   ```
+
+#### UI Components
+
+The UI provides several ways to delete content:
+
+1. **Single Item Deletion**: 
+   - Each card has a delete icon (trash can) 
+   - Clicking this icon opens a confirmation dialog
+   - The `handleDeleteClick` and `handleConfirmDelete` functions in `audio-recorder.tsx` handle this process
+
+2. **Multi-Select Deletion**:
+   - Users can enable "edit mode" to select multiple cards
+   - Selected cards can be deleted in batch
+   - The `handleDeleteSelected` and `handleConfirmMultiDelete` functions handle batch deletion
+
+#### Debug Logging
+
+Comprehensive logging has been added to track deletion issues:
+
+1. **Database Layer Logging**: 
+   - Each database function logs:
+     - When the deletion attempt starts
+     - Success or failure of the operation
+     - Error details when applicable
+     - JSON data of the affected records
+
+2. **UI Layer Logging**:
+   - The UI components log:
+     - When deletion is initiated
+     - Which items are selected for deletion
+     - Results of deletion operations
+     - Error details when applicable
+
+This logging pattern helps identify where in the pipeline deletion might be failing by tracking the item IDs, user IDs, and operation results throughout the entire process.
+
+### Transaction Flow
+
+The deletion process follows this sequence:
+
+1. User initiates deletion (single or multi-select)
+2. UI displays confirmation dialog
+3. User confirms deletion
+4. For each item to delete:
+   a. UI calls appropriate delete function based on item type
+   b. Database function performs deletion operation
+   c. Result is returned to UI
+5. UI removes deleted items from display
+6. Success/error notification is shown to user
+
+### RLS (Row-Level Security)
+
+All deletion operations are secured by Supabase RLS policies that ensure users can only delete their own records:
+
+```sql
+CREATE POLICY "Users can delete their own files" 
+ON files FOR DELETE TO public
+USING (auth.uid() = user_id);
+```
+
+Similar policies exist for all content types, ensuring proper data isolation and security.
+
+### Soft-Deletion Filtering
+
+For transcriptions that use the soft-delete approach, proper filtering is implemented in the retrieval functions to ensure deleted records stay hidden:
+
+1. **Filtering Conditions**: When fetching transcriptions, we use multiple conditions:
+   ```typescript
+   .is('deleted', null) // Include records where deleted is null (default state)
+   .or('deleted.eq.false') // Include records where deleted is explicitly false
+   ```
+
+2. **Inner Joins for Analyses**: When fetching analyses that reference transcriptions, we use an inner join with filtering:
+   ```typescript
+   .select(`
+     *,
+     transcriptions!inner (
+       id,
+       title,
+       content,
+       deleted
+     )
+   `)
+   .eq('transcriptions.deleted', false) // Only include analyses with non-deleted transcriptions
+   ```
+
+3. **Debugging Logs**: Extensive logging is added to track the filtering process:
+   ```typescript
+   console.log(`[FILTER DEBUG] Fetched ${data?.length || 0} non-deleted transcriptions`);
+   ```
+
+This filtering ensures that once a transcription is marked as deleted (deleted=true), it will not appear in any query results, effectively hiding it from the user interface while still preserving the data in the database.

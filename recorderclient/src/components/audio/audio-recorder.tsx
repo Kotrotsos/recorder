@@ -1306,10 +1306,10 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
 
   // Function to handle actual deletion
   const handleConfirmDelete = async () => {
-    console.log(`AudioRecorder - Confirming delete for ${itemToDelete.type} ID ${itemToDelete.id}`);
+    console.log(`[DELETE UI DEBUG] Confirming delete for ${itemToDelete.type} ID ${itemToDelete.id}, original ID: ${itemToDelete.originalId}`);
     
     if (!itemToDelete.originalId) {
-      console.error('Cannot delete item: missing original ID');
+      console.error('[DELETE UI DEBUG] Cannot delete item: missing original ID');
       toast.error('Delete failed', { description: 'Could not find the item to delete' });
       return;
     }
@@ -1319,13 +1319,18 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
       
       if (itemToDelete.type === 'transcribe') {
         // Mark the transcription as deleted instead of actually deleting it
+        console.log(`[DELETE UI DEBUG] Calling deleteTranscription with originalId: ${itemToDelete.originalId}`);
         success = await deleteTranscription(itemToDelete.originalId);
+        console.log(`[DELETE UI DEBUG] deleteTranscription result: ${success}`);
       } else if (itemToDelete.type === 'summarize' || itemToDelete.type === 'analyze') {
         // For analyses and summaries, actually delete the record
+        console.log(`[DELETE UI DEBUG] Calling deleteAnalysis with originalId: ${itemToDelete.originalId}`);
         success = await deleteAnalysis(itemToDelete.originalId);
+        console.log(`[DELETE UI DEBUG] deleteAnalysis result: ${success}`);
       }
       
       if (success) {
+        console.log(`[DELETE UI DEBUG] Delete was successful, removing item ${itemToDelete.id} from UI`);
         // Remove the item from processedResults
         setProcessedResults(prevResults => 
           prevResults.filter(result => result.id !== itemToDelete.id)
@@ -1333,15 +1338,17 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
         
         // Notify parent component
         if (onResultsChange) {
+          console.log('[DELETE UI DEBUG] Notifying parent component of the deletion');
           onResultsChange(processedResults.filter(result => result.id !== itemToDelete.id));
         }
         
         toast.success('Item deleted successfully');
       } else {
+        console.error('[DELETE UI DEBUG] Delete operation returned false');
         toast.error('Delete failed', { description: 'Could not delete the item' });
       }
     } catch (error) {
-      console.error('Error deleting item:', error);
+      console.error('[DELETE UI DEBUG] Error deleting item:', error);
       toast.error('Delete failed', { description: String(error) });
     } finally {
       setDeleteDialogOpen(false);
@@ -1622,12 +1629,12 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
 
   // Function to handle actual multi-deletion
   const handleConfirmMultiDelete = async () => {
-    console.log(`AudioRecorder - Confirming multi-delete for ${multiDeleteItems.length} items`);
+    console.log(`[DELETE UI DEBUG] Confirming multi-delete for ${multiDeleteItems.length} items: ${JSON.stringify(multiDeleteItems)}`);
     
     const deletePromises = multiDeleteItems.map(async (item) => {
       if (!item.originalId) {
-        console.error(`Cannot delete item ID ${item.id}: missing original ID`);
-        return false;
+        console.error(`[DELETE UI DEBUG] Cannot delete item ID ${item.id}: missing original ID`);
+        return null;
       }
       
       try {
@@ -1635,15 +1642,19 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
         
         if (item.type === 'transcribe') {
           // Mark the transcription as deleted instead of actually deleting it
+          console.log(`[DELETE UI DEBUG] Calling deleteTranscription for item ${item.id} with originalId: ${item.originalId}`);
           success = await deleteTranscription(item.originalId);
+          console.log(`[DELETE UI DEBUG] deleteTranscription result for item ${item.id}: ${success}`);
         } else if (item.type === 'summarize' || item.type === 'analyze') {
           // For analyses and summaries, actually delete the record
+          console.log(`[DELETE UI DEBUG] Calling deleteAnalysis for item ${item.id} with originalId: ${item.originalId}`);
           success = await deleteAnalysis(item.originalId);
+          console.log(`[DELETE UI DEBUG] deleteAnalysis result for item ${item.id}: ${success}`);
         }
         
         return success ? item.id : null;
       } catch (error) {
-        console.error(`Error deleting item ID ${item.id}:`, error);
+        console.error(`[DELETE UI DEBUG] Error deleting item ID ${item.id}:`, error);
         return null;
       }
     });
@@ -1651,7 +1662,11 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     const results = await Promise.all(deletePromises);
     const successfulIds = results.filter(Boolean);
     
+    console.log(`[DELETE UI DEBUG] Multi-delete completed: ${successfulIds.length} successful, ${multiDeleteItems.length - successfulIds.length} failed`);
+    console.log(`[DELETE UI DEBUG] Successful IDs: ${JSON.stringify(successfulIds)}`);
+    
     if (successfulIds.length > 0) {
+      console.log(`[DELETE UI DEBUG] Removing ${successfulIds.length} items from UI`);
       // Remove the items from processedResults
       setProcessedResults(prevResults => 
         prevResults.filter(result => !successfulIds.includes(result.id))
@@ -1659,6 +1674,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
       
       // Notify parent component
       if (onResultsChange) {
+        console.log('[DELETE UI DEBUG] Notifying parent component of multi-deletion');
         onResultsChange(processedResults.filter(result => !successfulIds.includes(result.id)));
       }
       
@@ -1667,6 +1683,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
     
     if (successfulIds.length < multiDeleteItems.length) {
       const failedCount = multiDeleteItems.length - successfulIds.length;
+      console.error(`[DELETE UI DEBUG] Failed to delete ${failedCount} items`);
       toast.error(`Failed to delete ${failedCount} items`);
     }
     

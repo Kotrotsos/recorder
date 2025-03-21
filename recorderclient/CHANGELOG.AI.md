@@ -1765,3 +1765,41 @@ This ensures the UI matches the underlying code, which previously had these opti
 - **Enhanced** multi-selection UI with both Select All and Deselect All options
 - **Improved** user experience by providing a quick way to cancel selection
 - **Modified** `audio-recorder.tsx` to support this new functionality
+
+## Fri Mar 21 01:18:31 CET 2025
+
+### Enhanced Webhook Documentation
+
+- **Updated** the sample webhook payload to match the actual implementation
+- **Added** detailed examples showing transcript and document content
+- **Enhanced** descriptions of payload differences between event types
+- **Improved** developer experience with more accurate webhook documentation
+- **Modified** `webhook-settings.tsx` to provide better technical guidance
+
+## March 21, 2025 - 15:45 CET
+
+### Fixed
+- **Added** extensive debug logging to track down deletion issues
+- **Improved** error reporting in file and transcription deletion functions
+- **Enhanced** debug information in UI delete handlers
+- **Fixed** multi-select deletion with better error tracking
+- **Files modified**:
+  - src/lib/db.ts - Added detailed console logging for delete operations
+  - src/hooks/useDatabase.ts - Added debug logging to the deletion functions
+  - src/components/audio/audio-recorder.tsx - Enhanced delete confirmation handlers with debug logs
+
+This change adds comprehensive debug logging throughout the deletion flow to identify why items are not being properly deleted from the database. The logs track the deletion process from UI interaction through the database operations, showing detailed information about each step including error messages and operation results.
+
+## March 21, 2025 - 16:30 CET
+
+### Fixed
+- **Fixed** deletion functionality to properly filter out soft-deleted transcriptions
+- **Added** missing filtering conditions in getUserTranscriptions and getTranscription functions
+- **Improved** handling of deleted transcriptions in getUserAnalyses
+- **Enhanced** database queries to exclude records with deleted=true
+- **Added** additional debugging logs to track filtering operations
+- **Files modified**:
+  - src/lib/db.ts - Added filtering conditions to exclude deleted records
+  - src/hooks/useDatabase.ts - Added filtering conditions to exclude deleted records
+
+This change fixes a critical issue where soft-deleted transcriptions were still appearing in the UI after page refresh. The problem was that while the soft-delete operation was working correctly (setting deleted=true in the database), the retrieval functions weren't filtering out these deleted records. This update adds proper filtering conditions to all relevant database queries to ensure deleted records stay hidden.

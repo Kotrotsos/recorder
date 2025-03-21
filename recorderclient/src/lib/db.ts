@@ -64,6 +64,8 @@ export async function getUserFiles(userId: string) {
 export async function deleteFile(userId: string, fileId: string) {
   const supabase = createClient();
   
+  console.log(`[DELETE DEBUG] Attempting to delete file: fileId=${fileId}, userId=${userId}`);
+  
   // Get file path first
   const { data: fileData, error: fetchError } = await supabase
     .from('files')
@@ -73,8 +75,11 @@ export async function deleteFile(userId: string, fileId: string) {
     .single();
   
   if (fetchError) {
+    console.error(`[DELETE DEBUG] Error fetching file: ${fetchError.message}`, fetchError);
     throw new Error(`Error fetching file: ${fetchError.message}`);
   }
+  
+  console.log(`[DELETE DEBUG] Found file: file_path=${fileData.file_path}`);
   
   // Delete file from storage
   const { error: storageError } = await supabase.storage
@@ -82,19 +87,26 @@ export async function deleteFile(userId: string, fileId: string) {
     .remove([fileData.file_path]);
   
   if (storageError) {
+    console.error(`[DELETE DEBUG] Error deleting file from storage: ${storageError.message}`, storageError);
     throw new Error(`Error deleting file from storage: ${storageError.message}`);
   }
   
+  console.log(`[DELETE DEBUG] Successfully deleted file from storage`);
+  
   // Delete file record from database
-  const { error: deleteError } = await supabase
+  const { data: deleteData, error: deleteError } = await supabase
     .from('files')
     .delete()
     .eq('id', fileId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .select();
   
   if (deleteError) {
+    console.error(`[DELETE DEBUG] Error deleting file record from database: ${deleteError.message}`, deleteError);
     throw new Error(`Error deleting file record: ${deleteError.message}`);
   }
+  
+  console.log(`[DELETE DEBUG] Successfully deleted file record from database: ${JSON.stringify(deleteData)}`);
   
   return true;
 }
@@ -137,6 +149,8 @@ export async function createTranscription(userId: string, fileId: string, title:
 export async function getUserTranscriptions(userId: string) {
   const supabase = createClient();
   
+  console.log(`[FILTER DEBUG] Getting transcriptions for user ${userId} and filtering out deleted ones`);
+  
   const { data, error } = await supabase
     .from('transcriptions')
     .select(`
@@ -144,17 +158,23 @@ export async function getUserTranscriptions(userId: string) {
       files (filename, file_path)
     `)
     .eq('user_id', userId)
+    .is('deleted', null) // Include records where deleted is null
+    .or('deleted.eq.false') // Include records where deleted is false
     .order('created_at', { ascending: false });
   
   if (error) {
+    console.error(`[FILTER DEBUG] Error fetching transcriptions: ${error.message}`, error);
     throw new Error(`Error fetching transcriptions: ${error.message}`);
   }
   
+  console.log(`[FILTER DEBUG] Fetched ${data?.length || 0} non-deleted transcriptions`);
   return data || [];
 }
 
 export async function getTranscription(userId: string, transcriptionId: string) {
   const supabase = createClient();
+  
+  console.log(`[FILTER DEBUG] Getting transcription ID ${transcriptionId} for user ${userId}, excluding deleted`);
   
   const { data, error } = await supabase
     .from('transcriptions')
@@ -164,12 +184,16 @@ export async function getTranscription(userId: string, transcriptionId: string) 
     `)
     .eq('id', transcriptionId)
     .eq('user_id', userId)
+    .is('deleted', null) // Exclude deleted transcriptions (null)
+    .or('deleted.eq.false,id.eq.' + transcriptionId) // Or when deleted is false
     .maybeSingle();
   
   if (error) {
+    console.error(`[FILTER DEBUG] Error fetching transcription: ${error.message}`, error);
     throw new Error(`Error fetching transcription: ${error.message}`);
   }
   
+  console.log(`[FILTER DEBUG] Fetched transcription: ${data ? 'Found' : 'Not found'}`);
   return data;
 }
 
@@ -198,6 +222,8 @@ export async function updateTranscription(userId: string, transcriptionId: strin
 export async function deleteTranscription(userId: string, transcriptionId: string) {
   const supabase = createClient();
   
+  console.log(`[DELETE DEBUG] Attempting to soft-delete transcription: transcriptionId=${transcriptionId}, userId=${userId}`);
+  
   // Instead of deleting, update the deleted column to true
   const { data, error } = await supabase
     .from('transcriptions')
@@ -207,8 +233,11 @@ export async function deleteTranscription(userId: string, transcriptionId: strin
     .select();
   
   if (error) {
+    console.error(`[DELETE DEBUG] Error soft-deleting transcription: ${error.message}`, error);
     throw new Error(`Error soft-deleting transcription: ${error.message}`);
   }
+  
+  console.log(`[DELETE DEBUG] Successfully soft-deleted transcription: ${JSON.stringify(data)}`);
   
   return data;
 }
@@ -269,19 +298,29 @@ export async function createAnalysis(userId: string, transcriptionId: string | n
 export async function getUserAnalyses(userId: string) {
   const supabase = createClient();
   
+  console.log(`[FILTER DEBUG] Getting analyses for user ${userId}`);
+  
   const { data, error } = await supabase
     .from('analyses')
     .select(`
       *,
-      transcriptions (title, content)
+      transcriptions!inner (
+        id,
+        title,
+        content,
+        deleted
+      )
     `)
     .eq('user_id', userId)
+    .eq('transcriptions.deleted', false) // Only include analyses with non-deleted transcriptions
     .order('created_at', { ascending: false });
   
   if (error) {
+    console.error(`[FILTER DEBUG] Error fetching analyses: ${error.message}`, error);
     throw new Error(`Error fetching analyses: ${error.message}`);
   }
   
+  console.log(`[FILTER DEBUG] Fetched ${data?.length || 0} analyses with non-deleted transcriptions`);
   return data || [];
 }
 
@@ -347,15 +386,21 @@ export async function updateAnalysis(userId: string, analysisId: string, updates
 export async function deleteAnalysis(userId: string, analysisId: string) {
   const supabase = createClient();
   
-  const { error } = await supabase
+  console.log(`[DELETE DEBUG] Attempting to delete analysis: analysisId=${analysisId}, userId=${userId}`);
+  
+  const { data, error } = await supabase
     .from('analyses')
     .delete()
     .eq('id', analysisId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .select();
   
   if (error) {
+    console.error(`[DELETE DEBUG] Error deleting analysis: ${error.message}`, error);
     throw new Error(`Error deleting analysis: ${error.message}`);
   }
+  
+  console.log(`[DELETE DEBUG] Successfully deleted analysis: ${JSON.stringify(data)}`);
   
   return true;
 }

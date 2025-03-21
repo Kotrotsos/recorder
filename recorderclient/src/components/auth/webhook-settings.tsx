@@ -199,17 +199,29 @@ export default function WebhookSettings({ user }: WebhookSettingsProps) {
             Webhooks allow your application to receive real-time notifications about events in your rec.ai account. 
             The webhook payload includes detailed information about the event that triggered it.
           </p>
+          <p className="text-sm text-white/80 mt-2">
+            For <span className="font-semibold">transcription_created</span> events, the payload includes the transcript with content and metadata, with an empty document object.
+            For <span className="font-semibold">analysis_created</span> events, the payload includes both the original transcript and the analysis document.
+          </p>
           <div className="mt-3 text-xs text-white/60">
             <p>Sample webhook payload:</p>
             <pre className="bg-black/30 p-2 rounded mt-1 overflow-x-auto">
               {`{
-  "event": "transcription_created",
-  "timestamp": "2023-09-15T08:24:35Z",
-  "data": {
+  "transcript": {
     "id": "trans_123456",
-    "recording_id": "rec_789012",
+    "title": "Meeting with Product Team",
+    "content": "Today we discussed the new feature roadmap...",
+    "duration": 1260,
+    "created_at": "2023-09-15T08:24:35Z",
     "status": "completed"
-  }
+  },
+  "document": {
+    "id": "doc_789012",
+    "type": "analysis",
+    "content": "This analysis highlights key points from the meeting...",
+    "created_at": "2023-09-15T08:30:15Z"
+  },
+  "user_id": "user_456789"
 }`}
             </pre>
           </div>

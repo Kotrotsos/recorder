@@ -165,13 +165,18 @@ export function useDatabase() {
     setError(null);
     
     try {
+      console.log(`[DELETE HOOK DEBUG] Attempting to delete file: fileId=${fileId}`);
+      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        throw new Error('You must be logged in to delete files');
+        const errMsg = 'You must be logged in to delete files';
+        console.error(`[DELETE HOOK DEBUG] ${errMsg}`);
+        throw new Error(errMsg);
       }
       
       const userId = session.user.id;
+      console.log(`[DELETE HOOK DEBUG] Got user ID: ${userId}`);
       
       // Ensure user profile exists
       await ensureUserProfile(userId);
@@ -185,8 +190,11 @@ export function useDatabase() {
         .single();
       
       if (fetchError) {
+        console.error(`[DELETE HOOK DEBUG] Error fetching file: ${fetchError.message}`, fetchError);
         throw new Error(`Error fetching file: ${fetchError.message}`);
       }
+      
+      console.log(`[DELETE HOOK DEBUG] Found file: file_path=${fileData.file_path}`);
       
       // Delete file from storage
       const { error: storageError } = await supabase.storage
@@ -194,23 +202,31 @@ export function useDatabase() {
         .remove([fileData.file_path]);
       
       if (storageError) {
+        console.error(`[DELETE HOOK DEBUG] Error deleting file from storage: ${storageError.message}`, storageError);
         throw new Error(`Error deleting file from storage: ${storageError.message}`);
       }
       
+      console.log(`[DELETE HOOK DEBUG] Successfully deleted file from storage`);
+      
       // Delete file record from database
-      const { error: deleteError } = await supabase
+      const { data, error: deleteError } = await supabase
         .from('files')
         .delete()
         .eq('id', fileId)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .select();
       
       if (deleteError) {
+        console.error(`[DELETE HOOK DEBUG] Error deleting file record from database: ${deleteError.message}`, deleteError);
         throw new Error(`Error deleting file record: ${deleteError.message}`);
       }
+      
+      console.log(`[DELETE HOOK DEBUG] Successfully deleted file from database: ${JSON.stringify(data)}`);
       
       router.refresh();
       return true;
     } catch (err: any) {
+      console.error(`[DELETE HOOK DEBUG] Error in deleteFile:`, err);
       setError(err.message);
       return false;
     } finally {
@@ -278,6 +294,8 @@ export function useDatabase() {
     setError(null);
     
     try {
+      console.log(`[FILTER DEBUG] Hook: Getting transcriptions and filtering out deleted ones`);
+      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -293,12 +311,16 @@ export function useDatabase() {
           files (filename, file_path)
         `)
         .eq('user_id', userId)
+        .is('deleted', null) // Include records where deleted is null
+        .or('deleted.eq.false') // Include records where deleted is false
         .order('created_at', { ascending: false });
       
       if (error) {
+        console.error(`[FILTER DEBUG] Hook: Error fetching transcriptions: ${error.message}`, error);
         throw new Error(`Error fetching transcriptions: ${error.message}`);
       }
       
+      console.log(`[FILTER DEBUG] Hook: Fetched ${data?.length || 0} non-deleted transcriptions`);
       return data || [];
     } catch (err: any) {
       setError(err.message);
@@ -313,6 +335,8 @@ export function useDatabase() {
     setError(null);
     
     try {
+      console.log(`[FILTER DEBUG] Hook: Getting transcription ID ${transcriptionId}, excluding deleted`);
+      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -329,12 +353,16 @@ export function useDatabase() {
         `)
         .eq('id', transcriptionId)
         .eq('user_id', userId)
+        .is('deleted', null) // Exclude deleted transcriptions (null)
+        .or('deleted.eq.false,id.eq.' + transcriptionId) // Or when deleted is false
         .maybeSingle();
       
       if (error) {
+        console.error(`[FILTER DEBUG] Hook: Error fetching transcription: ${error.message}`, error);
         throw new Error(`Error fetching transcription: ${error.message}`);
       }
       
+      console.log(`[FILTER DEBUG] Hook: Fetched transcription: ${data ? 'Found' : 'Not found'}`);
       return data;
     } catch (err: any) {
       setError(err.message);
@@ -391,31 +419,41 @@ export function useDatabase() {
     setError(null);
     
     try {
+      console.log(`[DELETE HOOK DEBUG] Attempting to soft-delete transcription: transcriptionId=${transcriptionId}`);
+      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        throw new Error('You must be logged in to delete transcriptions');
+        const errMsg = 'You must be logged in to delete transcriptions';
+        console.error(`[DELETE HOOK DEBUG] ${errMsg}`);
+        throw new Error(errMsg);
       }
       
       const userId = session.user.id;
+      console.log(`[DELETE HOOK DEBUG] Got user ID: ${userId}`);
       
       // Ensure user profile exists
       await ensureUserProfile(userId);
       
       // Instead of deleting, update the deleted column to true
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('transcriptions')
         .update({ deleted: true })
         .eq('id', transcriptionId)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .select();
       
       if (error) {
+        console.error(`[DELETE HOOK DEBUG] Error soft-deleting transcription: ${error.message}`, error);
         throw new Error(`Error soft-deleting transcription: ${error.message}`);
       }
+      
+      console.log(`[DELETE HOOK DEBUG] Successfully soft-deleted transcription: ${JSON.stringify(data)}`);
       
       router.refresh();
       return true;
     } catch (err: any) {
+      console.error(`[DELETE HOOK DEBUG] Error in deleteTranscription:`, err);
       setError(err.message);
       return false;
     } finally {
@@ -501,6 +539,8 @@ export function useDatabase() {
     setError(null);
     
     try {
+      console.log(`[FILTER DEBUG] Hook: Getting analyses with non-deleted transcriptions`);
+      
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -518,9 +558,15 @@ export function useDatabase() {
         .from('analyses')
         .select(`
           *,
-          transcriptions (title, content)
+          transcriptions!inner (
+            id,
+            title,
+            content,
+            deleted
+          )
         `)
         .eq('user_id', userId)
+        .eq('transcriptions.deleted', false) // Only include analyses with non-deleted transcriptions
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -528,7 +574,7 @@ export function useDatabase() {
         throw new Error(`Error fetching analyses: ${error.message}`);
       }
       
-      console.log('getUserAnalyses: Fetched analyses:', data?.length || 0);
+      console.log(`[FILTER DEBUG] Hook: Fetched ${data?.length || 0} analyses with non-deleted transcriptions`);
       return data || [];
     } catch (err: any) {
       console.error('getUserAnalyses: Caught error:', err);
