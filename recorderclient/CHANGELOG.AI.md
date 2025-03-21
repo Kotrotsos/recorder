@@ -1,5 +1,25 @@
 # CHANGELOG.AI
 
+## March 21, 2025 - 12:43 CET
+
+### Style
+- **Changed** placeholder text color in textarea from gray to white for better visibility
+- **Improved** user experience by making placeholder text more readable in the dark interface
+- **Enhanced** consistency by matching placeholder text color with the rest of the UI text
+- **Files modified**: src/components/audio/audio-recorder.tsx
+
+This change improves the visibility of the placeholder text in the Write tab's textarea, making it easier for users to see the prompt before they start typing. The white placeholder text provides better contrast against the dark background, consistent with the application's overall design language.
+
+## March 21, 2025 - 12:35 CET
+
+### Style
+- **Increased** transparency of the "Ready to Record?" empty state card
+- **Reduced** background opacity from bg-white/5 to bg-white/3 for a more subtle appearance
+- **Improved** visual aesthetics by making the empty state card blend better with background
+- **Files modified**: src/components/audio/audio-recorder.tsx
+
+This change enhances the visual appearance of the empty state card that appears when there are no recordings by making it slightly more transparent. The card now better blends with the background gradient while still providing a clear call-to-action for new users.
+
 ## March 21, 2025 - 12:33 CET
 
 ### Fixed
@@ -1817,3 +1837,30 @@ This change adds comprehensive debug logging throughout the deletion flow to ide
   - src/hooks/useDatabase.ts - Added filtering conditions to exclude deleted records
 
 This change fixes a critical issue where soft-deleted transcriptions were still appearing in the UI after page refresh. The problem was that while the soft-delete operation was working correctly (setting deleted=true in the database), the retrieval functions weren't filtering out these deleted records. This update adds proper filtering conditions to all relevant database queries to ensure deleted records stay hidden.
+
+## 2024-03-21 14:30 - Fix for Multiple User API Calls
+
+### Issue
+The application was making multiple calls to the user endpoint, as visible in the network logs. This was happening because each component that needed user data was making its own API call.
+
+### Changes Made
+
+1. Created a centralized auth context:
+   - Added `src/contexts/auth-context.tsx` which provides user data, authentication state, and loading state
+   - This context makes a single call to fetch user data and shares it with all components
+
+2. Updated `useAuth` hook to use the auth context:
+   - Modified `src/hooks/useAuth.ts` to be a wrapper around the auth context hook
+
+3. Added the auth provider to the app layout:
+   - Updated `src/app/layout.tsx` to wrap the application with `AuthProvider`
+
+4. Updated components to use the auth context:
+   - Modified `src/contexts/ui-settings-context.tsx` to use auth context instead of making its own user API calls
+   - Modified `src/app/account/page.tsx` to use auth context instead of fetching user data directly
+   - Modified `src/components/auth/protected-route.tsx` to use auth context for authentication checks
+   - Modified `src/components/auth/ui-settings.tsx` to use auth context
+   - Modified `src/components/PricingPageClient.tsx` to use auth context
+
+### Result
+The application now makes a single call to fetch user data which is then shared with all components that need it, eliminating duplicate API calls.

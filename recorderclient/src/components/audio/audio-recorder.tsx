@@ -2297,10 +2297,10 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
 
       {/* Empty state card when there are no recordings */}
       {processedResults.length === 0 && (
-        <div className="flex justify-center items-center h-[calc(100vh-200px)]">
+        <div className="flex justify-center items-center h-[calc(100vh-500px)] opacity-50">
           <div className="w-full max-w-md mx-auto">
-            <div className="h-[280px] border border-white/20 rounded-lg backdrop-blur-md shadow-lg bg-white/5 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-              <Mic className="h-16 w-16 mb-4 text-white/30" />
+            <div className="h-[280px] border border-white/20 rounded-lg backdrop-blur-md shadow-lg bg-white/3 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+              <Mic className="h-16 w-16 mb-4 text-white/10" />
               <h3 className="text-xl font-medium text-white mb-2">Ready to Record?</h3>
               <p className="text-white/70 mb-6">Press record at the bottom of the screen and make magic happen</p>
               <div className="w-40 h-10 border border-white/30 rounded-full flex items-center justify-center">
@@ -2863,7 +2863,7 @@ export default function AudioRecorder({ isAuthenticated = false, onResultsChange
                   onChange={(e) => setTextContent(e.target.value)}
                   name="custom-text"
                   placeholder="Enter your text here..."
-                  className="min-h-[200px] bg-white/5 border-white/20 text-white resize-y mb-4"
+                  className="min-h-[200px] bg-white/5 border-white/20 text-white placeholder:text-white resize-y mb-4"
                 />
                 
                 <div className="space-y-4">

@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 import { UISettingsProvider } from '@/contexts/ui-settings-context'
 import { LoadingProvider } from '@/contexts/loading-context'
 import { LoadingOverlay } from '@/components/ui/loading-overlay'
+import { AuthProvider } from '@/contexts/auth-context'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,15 +34,17 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}
         suppressHydrationWarning
       >
-        <UISettingsProvider>
-          <LoadingProvider>
-            <LoadingOverlay fullHeight>
-              {children}
-            </LoadingOverlay>
-            <Toaster position="top-center" richColors />
-            <SpeedInsights />
-          </LoadingProvider>
-        </UISettingsProvider>
+        <AuthProvider>
+          <UISettingsProvider>
+            <LoadingProvider>
+              <LoadingOverlay fullHeight>
+                {children}
+              </LoadingOverlay>
+              <Toaster position="top-center" richColors />
+              <SpeedInsights />
+            </LoadingProvider>
+          </UISettingsProvider>
+        </AuthProvider>
       </body>
     </html>
   );

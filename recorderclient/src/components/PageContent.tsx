@@ -214,7 +214,7 @@ export default function PageContent({ user: serverUser }: PageContentProps) {
       </header>
       
       {/* Main content */}
-      <main className="flex-1 flex flex-col items-center justify-between relative z-10 px-2 mx-auto">
+      <main className="   z-10   ">
         {/* Top section with headline - only show when not authenticated and no results */}
         {!isAuthenticated && !hasProcessedResults && (
           <div className="text-center pt-16 pb-8  mx-auto w-full">

@@ -2,6 +2,62 @@
 
 This file documents complex parts of the codebase and explains how they work.
 
+## Card and Deleted Flag Handling
+
+### March 21, 2025
+
+The application uses a soft-delete approach for cards (transcriptions, analyses) to allow for potential recovery while ensuring deleted items don't appear in the UI. This system relies on a `deleted` flag in the database which is set to `true` when an item is "deleted" instead of permanently removing the record.
+
+### Implementation Details
+
+1. **Database Level Filtering**:
+   - All database queries have been standardized to use `.not('deleted', 'eq', true)` 
+   - This approach properly filters out records where:
+     - `deleted` is `true` (explicitly deleted records)
+     - While including records where:
+     - `deleted` is `false` (explicitly not deleted)
+     - `deleted` is `null` (never been deleted, default state)
+
+2. **Soft-Delete Function**:
+   ```typescript
+   export async function deleteTranscription(userId: string, transcriptionId: string) {
+     const supabase = createClient();
+     
+     // Instead of deleting, update the deleted column to true
+     const { data, error } = await supabase
+       .from('transcriptions')
+       .update({ deleted: true })
+       .eq('id', transcriptionId)
+       .eq('user_id', userId)
+       .select();
+     
+     // Log and return results
+     return data;
+   }
+   ```
+
+3. **Data Loading in Components**:
+   - The `AudioWrapper` component loads transcriptions from the database
+   - A second layer of filtering is applied to ensure no deleted items are displayed:
+     ```typescript
+     // Filter out any transcriptions with deleted=true
+     const nonDeletedTranscriptions = transcriptions.filter(t => t.deleted !== true);
+     ```
+   - This double-filtering approach ensures consistency between the database and UI
+
+4. **Data Flow**:
+   1. User adds a card → `deleted` is `null` or `false` → Card is visible in UI
+   2. User deletes a card → `deleted` is set to `true` → Card is removed from UI
+   3. Page reload occurs → Database queries filter out `deleted=true` items → Only non-deleted cards appear
+
+### Technical Considerations
+
+- **Query Optimization**: Using `.not('deleted', 'eq', true)` is more efficient than the previous approach which used multiple conditions (`.is('deleted', null).or('deleted.eq.false')`)
+- **Consistency**: The standardized approach ensures consistent behavior across all database operations
+- **Resilience**: The double-filtering (database + component level) adds robustness to the system
+
+This implementation balances the need for data preservation (soft deletes) with a clean user experience where deleted items don't reappear after page refreshes.
+
 ## Transcript Edit Feature in Expanded Cards
 
 ### March 21, 2025
@@ -3736,3 +3792,104 @@ For transcriptions that use the soft-delete approach, proper filtering is implem
    ```
 
 This filtering ensures that once a transcription is marked as deleted (deleted=true), it will not appear in any query results, effectively hiding it from the user interface while still preserving the data in the database.
+
+## Authentication System
+
+### Auth Context
+
+The application uses a centralized authentication context system to manage user state across the application. This pattern ensures that:
+
+1. Only one request is made to fetch user data
+2. All components have access to the same user data
+3. Components can easily check authentication status
+
+#### Implementation
+
+The auth context is defined in `src/contexts/auth-context.tsx`:
+
+```typescript
+// Key parts of the auth context
+interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+  refreshUser: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType>({...});
+
+export const useAuth = () => useContext(AuthContext);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+
+  // Function to fetch user data
+  const fetchUser = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initialization and auth state change subscription
+  useEffect(() => {
+    fetchUser();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async () => {
+      await fetchUser();
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, loading, refreshUser }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+```
+
+#### Usage
+
+Components can access the auth context using the `useAuth` hook:
+
+```typescript
+const { user, isAuthenticated, loading } = useAuth();
+
+// Check if user is authenticated
+if (isAuthenticated) {
+  // Do something with user data
+  console.log(user.id);
+}
+
+// Show loading state
+if (loading) {
+  return <LoadingSpinner />;
+}
+```
+
+The backward-compatible `useAuth` hook in `src/hooks/useAuth.ts` is a simple wrapper around the context hook:
+
+```typescript
+import { useAuth as useAuthContext } from '@/contexts/auth-context';
+
+export default function useAuth() {
+  return useAuthContext();
+}
+```
+
+#### Benefits
+
+- **Performance**: Makes only one API call to fetch user data
+- **Consistency**: All components see the same user data
+- **Simplicity**: Components don't need to implement their own auth logic
+- **Reactivity**: All components get updated when auth state changes
